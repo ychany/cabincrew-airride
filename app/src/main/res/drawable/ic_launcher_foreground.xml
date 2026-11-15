@@ -1,14 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AirRide/GNB App Icon glyph (52×52) centered in the 108dp adaptive canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Simple airflow mark -->
-    <path android:fillColor="#00000000" android:strokeColor="#FF4FC3F7"
-        android:strokeWidth="5" android:strokeLineCap="round"
-        android:pathData="M32,44 H64 a8,8 0 1,0 -8,-8" />
-    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="5" android:strokeLineCap="round"
-        android:pathData="M32,56 H74" />
-    <path android:fillColor="#00000000" android:strokeColor="#FF4FC3F7"
-        android:strokeWidth="5" android:strokeLineCap="round"
-        android:pathData="M32,68 H60 a8,8 0 1,1 -8,8" />
+    <group android:translateX="32" android:translateY="32" android:scaleX="0.846" android:scaleY="0.846">
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="4.76667" android:strokeLineCap="round"
+            android:pathData="M6.5,19.5H30.3333C31.6189,19.5 32.8756,19.1188 33.9445,18.4046C35.0135,17.6903 35.8466,16.6752 36.3386,15.4874C36.8305,14.2997 36.9592,12.9928 36.7084,11.7319C36.4576,10.471 35.8386,9.31285 34.9295,8.40381C34.0205,7.49476 32.8623,6.8757 31.6014,6.62489C30.3405,6.37409 29.0336,6.50281 27.8459,6.99478C26.6582,7.48675 25.643,8.31987 24.9288,9.38879C24.2146,10.4577 23.8333,11.7144 23.8333,13" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="4.76667" android:strokeLineCap="round"
+            android:pathData="M6.5,28.1667H39C40.2856,28.1667 41.5423,28.5479 42.6112,29.2621C43.6801,29.9763 44.5132,30.9915 45.0052,32.1792C45.4972,33.3669 45.6259,34.6739 45.3751,35.9348C45.1243,37.1956 44.5052,38.3538 43.5962,39.2629C42.6872,40.1719 41.529,40.791 40.2681,41.0418C39.0072,41.2926 37.7003,41.1639 36.5126,40.6719C35.3248,40.1799 34.3097,39.3468 33.5954,38.2779C32.8812,37.209 32.5,35.9522 32.5,34.6667" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="4.76667" android:strokeLineCap="round"
+            android:pathData="M6.5,36.8333H19.5" />
+    </group>
 </vector>
