@@ -1,0 +1,29 @@
+# Gradle / Android
+.gradle/
+build/
+/local.properties
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+!apk/*_release.apk
+*.aab
+output-metadata.json
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Signing (never commit)
+*.jks
+*.keystore
+keystore.properties
+
+# Submission paperwork (contains real names)
+*.docx
+*.hwp
+*.pdf
+
+# Local Claude settings
+.claude/settings.local.json
