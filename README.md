@@ -32,9 +32,12 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 런처에서 **AirRide**를 실행합니다. 화면은 가로 방향 기준입니다.
 
-### 2. 데모 모드
+### 2. 차량 연결 모드 / 데모 모드
 
-앱은 시작할 때 Pleos Vehicle SDK 연결을 시도합니다. 연결에 실패하거나 HVAC 내기순환 capability를 확인할 수 없으면 **자동으로 데모 모드**로 동작하고, 상단에 `데모 모드` 칩이 표시됩니다.
+앱은 시작할 때 Pleos Vehicle SDK 연결을 시도합니다.
+
+- **차량 연결됨**: Pleos Connect 에뮬레이터에서는 Vehicle Service에 연결되어 기어(P/D), HVAC 내기순환 상태, 조향각을 실제로 받습니다. [외기로 바꾸기]를 누르면 `setHvacRecirculation(false)`가 차량 HVAC에 실제로 적용됩니다.
+- **데모 모드**: SDK 연결에 실패하거나 HVAC capability를 확인할 수 없으면 자동으로 데모 모드로 전환됩니다. 차량에 연결된 상태라도 데모 패널을 조작하면 데모 값이 우선하며, 상단 칩이 `데모 모드`로 바뀝니다.
 
 - **데모 패널 열기**: 화면 왼쪽 위 **`AirRide` 글자를 길게 누르기**
 - 패널에서 시나리오 버튼을 누르거나, 슬라이더로 내기순환 시간·조향 보정·가감속·좌우 흔들림·연속 주행 시간·주행/정차를 직접 바꿀 수 있습니다.
@@ -55,8 +58,8 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 | 항목 | 값 |
 |---|---|
-| 에뮬레이터 | **Pleos Connect v2.1.0** (Android 14, API 34, Automotive, arm64-v8a) |
-| 화면 규격 | _TBD_ |
+| 에뮬레이터 | **Pleos Connect v2.1.0** (`release_connect_v2.1.0`, Android 14, API 34, Automotive, arm64-v8a) |
+| 화면 규격 | **2560 × 1440 px, 12.8인치, 160 dpi (mdpi), 가로** |
 | AVD 설정 | RAM 4GB, Cold boot |
 | Android Studio | 2025.2 |
 | JDK | 17 이상 (Android Studio 내장 JBR 사용) |
@@ -72,8 +75,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 |---|---|
 | `pleos.car.permission.CAR_CLIMATE` | HVAC 내기순환 상태 조회·구독 |
 | `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`) |
-| `pleos.car.permission.CAR_POWERTRAIN` | 기어 상태(P/D) → 주행/정차 판단 |
-| `pleos.car.permission.READ_CAR_STEERING` | 조향각 → 미세 보정 빈도 |
+| `pleos.car.permission.CAR_DRIVE` | 기어 상태(P/D) → 주행/정차 판단, 조향각 → 미세 보정 빈도 |
 
 ### 소스에서 빌드
 
