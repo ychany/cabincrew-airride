@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.cabincrew.airride.R
 import com.cabincrew.airride.control.CabinController
 import com.cabincrew.airride.control.DrivingRestriction
+import com.cabincrew.airride.control.NaviBridge
 import com.cabincrew.airride.control.VoiceGuide
 import com.cabincrew.airride.data.DemoVehicleSource
 import com.cabincrew.airride.data.VehicleConnector
@@ -79,6 +80,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private val recorder = TripRecorder()
     private val restriction = DrivingRestriction(app)
     private val voice = VoiceGuide(app)
+    private val navi = NaviBridge(app) { viewModelScope.launch { onArrivedAtRestArea() } }
     private val notifier = SuggestionNotifier(app)
     private var notified: Suggestion? = null
     private val prefs = app.getSharedPreferences("airride", android.content.Context.MODE_PRIVATE)
@@ -213,7 +215,9 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
                 showApplied("외기로 바꿨어요")
             }
             is Suggestion.Rest -> {
-                recorder.record(CareType.REST, "${s.restAreaName} 경유지 추가")
+                // A-08-2: hand the rest area to the navigation app (NaviHelper SDK).
+                val sent = navi.addRestStop(NaviBridge.Place(s.restAreaName, s.latitude, s.longitude, s.address))
+                recorder.record(CareType.REST, if (sent) "${s.restAreaName} 경유지 추가" else "${s.restAreaName} 경유지 추가 (데모)")
                 dismissed += Suggestion.Rest::class.java
                 restPending = s.restAreaName
                 showApplied("${s.restAreaName}를 경유지로 추가했어요")
@@ -245,6 +249,13 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- A-09 rest stop ----
+
+    /** Navigation app reported arrival → start the rest-stop flow if a rest was planned. */
+    private fun onArrivedAtRestArea() {
+        val name = restPending ?: return
+        restPending = null
+        _state.update { it.copy(phase = Phase.REST_STOP, restAreaName = name, restStep = RestStep.VENTILATE) }
+    }
 
     fun ventilate(doIt: Boolean) {
         val name = _state.value.restAreaName ?: "휴게소"
@@ -312,6 +323,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         controller.release()
         restriction.release()
         voice.release()
+        navi.release()
         notifier.cancel()
     }
 

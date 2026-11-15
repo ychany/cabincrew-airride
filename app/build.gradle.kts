@@ -68,6 +68,7 @@ android {
 
 dependencies {
     implementation(libs.vehicle.sdk)
+    implementation(libs.navi.helper)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
