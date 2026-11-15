@@ -45,9 +45,13 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 - **데모 패널 열기**: 앱 상단의 **`에어라이드` 글자를 길게 누르기**
 - 패널에서 시나리오 버튼을 누르거나, 슬라이더로 내기순환 시간·조향 보정·가감속·좌우 흔들림·연속 주행 시간·주행/정차를 직접 바꿀 수 있습니다.
 
-> 에뮬레이터에서 지원하지 않는 신호(차속, 가감속, 커브, 차선 경고, 탑승 인원)는 데모 값으로 동작합니다.
+> 에뮬레이터에서 지원하지 않는 신호(커브, 차선 경고, 탑승 인원)는 데모 값으로 동작합니다. 차속·가감속은 Virtual Console로 바꿀 수 있습니다.
 
 **AirRide가 화면에 없을 때 (내비 전체 화면)**: 제안은 같은 문구의 Android 알림(버튼 2개)으로 전달되고, 적용 결과는 토스트로 안내합니다. 단, 현재 Pleos Connect 에뮬레이터는 서드파티 앱의 헤즈업 알림을 화면에 띄우지 않으므로, 에뮬레이터 시연은 위의 분할 화면(가운데 내비 + 오른쪽 AirRide)으로 진행합니다.
+
+**실제 차량 신호로 확인 (Pleos Connect Virtual Console)**: `adb forward tcp:8088 tcp:8088` 후 PC 브라우저에서 `http://127.0.0.1:8088/`을 엽니다. Motion에서 기어를 **D**로 바꾸면 AirRide가 SDK 기어 신호로 주행 모드(케어 중, 설정·리포트 숨김)로 전환되고, 차속을 바꾸면 AAOS 차속(`PERF_VEHICLE_SPEED`)으로 계산한 가감속이 멀미 지수에 반영됩니다. Climate의 내기순환·풍량 변경도 앱에 반영됩니다.
+
+> 참고: `adb install`로 설치한 앱은 설치 출처가 앱 마켓이 아니어서 AAOS가 Distraction Optimized 선언을 적용하지 않습니다. 그래서 에뮬레이터에서 **차속이 0보다 커지면 시스템이 앱 화면을 "주행 중에는 사용할 수 없습니다"로 가립니다.** 앱 마켓으로 배포되면 선언이 적용됩니다. 에뮬레이터 시연은 기어 D·차속 0 상태 또는 데모 패널로 진행합니다.
 
 ### 3. 시나리오 재현 순서
 
@@ -85,6 +89,8 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | `pleos.car.permission.CAR_CLIMATE` | HVAC 내기순환 상태 조회·구독 |
 | `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`), 뒷좌석 바람 조절 (`setHvacFanSpeed`) |
 | `pleos.car.permission.CAR_DRIVE` | 기어 상태(P/D) → 주행/정차 판단, 조향각 → 미세 보정 빈도 |
+| `android.car.permission.CAR_SPEED` | 차속 → 가감속 변화 (실행 시 권한 요청) |
+| `android.permission.POST_NOTIFICATIONS` | 앱이 가려져 있을 때 제안 알림 (실행 시 권한 요청) |
 
 ### 소스에서 빌드
 
@@ -102,6 +108,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | Vehicle – Gear | `registerGearSelection` | 주행/정차 |
 | Vehicle – SteeringWheel | `registerSteeringWheelAngle` | 조향 미세 보정 빈도 |
 | AAOS | `CarUxRestrictionsManager` | 주행 중 UI 제한 |
+| AAOS | `CarPropertyManager` · `PERF_VEHICLE_SPEED` | 차속 → 가감속 변화 (멀미 지수) |
 | Android | `TextToSpeech` | 커브 전 음성 안내 |
 | Android | `NotificationManager` (heads-up, 액션 2개) | 앱이 가려져 있을 때 외기·휴식 제안 |
 
