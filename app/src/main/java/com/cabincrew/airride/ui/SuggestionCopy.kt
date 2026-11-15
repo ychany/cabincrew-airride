@@ -28,3 +28,10 @@ fun withParticle(name: String): String {
     val hasFinal = c in '가'..'힣' && (c - '가') % 28 != 0
     return if (hasFinal) "${name}이와" else "${name}와"
 }
+
+/** Possessive 의 — 민준 → 민준이의, 서아 → 서아의. */
+fun possessive(name: String): String {
+    val c = name.lastOrNull() ?: return name
+    val hasFinal = c in '가'..'힣' && (c - '가') % 28 != 0
+    return if (hasFinal) "${name}이의" else "${name}의"
+}

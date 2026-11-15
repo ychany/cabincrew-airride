@@ -45,6 +45,9 @@ enum class Phase { BOARDING_WHO, BOARDING_CARE, MAIN, REST_STOP }
 /** A-09 휴게소 도착 steps: 1 정차 확인 → 2 환기 → 3 쉰 뒤 상태 확인 */
 enum class RestStep { VENTILATE, RECHECK }
 
+/** A-05 curve care sequence (Figma 프로토타입: 대응 → 대응+ → 대응++ → 결과). */
+enum class CurveStage { WARN, CONCERN, ADJUSTING_NOTICE, ADJUSTING, STABLE }
+
 data class CareOptions(
     val rearFan: Boolean = true,
     val curveVoice: Boolean = false,
@@ -70,6 +73,8 @@ data class UiState(
     val appliedMessage: String? = null,
     /** A-05: rear fan softened during the current curve. */
     val rearFanActive: Boolean = false,
+    /** Non-null while the A-05 curve sequence is on screen. */
+    val curveStage: CurveStage? = null,
     val restAreaName: String? = null,
     val restStep: RestStep = RestStep.VENTILATE,
     val report: TripReport? = null,
@@ -152,7 +157,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         }
         val st = _state.value
         syncNotification(st)
-        if (st.suggestion == Suggestion.CurveAhead) onCurve() else if (!st.signals.curveAhead) curveHandled = false
+        if (st.suggestion == Suggestion.CurveAhead) onCurve() else if (!st.signals.curveAhead) onCurveEnded()
         // Arrived at the rest area: parked after accepting the rest suggestion → A-09.
         val pending = restPending
         if (pending != null && !st.signals.isDriving && st.phase == Phase.MAIN) {
@@ -180,21 +185,61 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         notifier.show(copy.title, copy.body, copy.primary, copy.secondary)
     }
 
-    /** A-05: curve ahead → voice prompt + gentle rear airflow (no buttons while driving). */
+    private var curveJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * A-05: curve ahead → voice prompt, then (if 뒷좌석 바람 조절 is on) gentle rear airflow + fresh air.
+     * No buttons while driving; each step stays on screen for a few seconds.
+     */
     private fun onCurve() {
         if (curveHandled) return
         curveHandled = true
-        val st = _state.value
-        if (st.care.curveVoice) voice.speak("곧 커브예요. 급가속과 급제동을 줄여주세요")
-        if (st.care.rearFan) {
+        val care = _state.value.care
+        curveJob?.cancel()
+        curveJob = viewModelScope.launch {
+            setCurveStage(CurveStage.WARN)
+            if (care.curveVoice) voice.speak("곧 커브예요. 급가속과 급제동을 줄여주세요")
+            delay(CURVE_STEP_MS)
+            setCurveStage(CurveStage.CONCERN)
+            if (!care.rearFan) {
+                recorder.record(CareType.CURVE_GUIDE, "커브 구간 · 부드러운 주행 안내", automatic = true)
+                return@launch
+            }
+            delay(CURVE_STEP_MS)
+            setCurveStage(CurveStage.ADJUSTING_NOTICE)
+            if (care.curveVoice) voice.speak("뒷좌석을 조금 더 시원하게, 바깥 공기로 바꿀게요")
             controller.softenRearFan { applied ->
                 recorder.record(CareType.CURVE_GUIDE, if (applied) "커브 구간 · 뒷좌석 바람 조절" else "커브 구간 · 뒷좌석 바람 조절 (데모)", automatic = true)
             }
+            if (_state.value.signals.recirculationOn) {
+                controller.switchToFreshAir { applied ->
+                    recorder.record(CareType.FRESH_AIR, if (applied) "커브 구간 · 외기로 전환" else "커브 구간 · 외기로 전환 (데모)", automatic = true)
+                }
+            }
             _state.update { it.copy(rearFanActive = true) }
-        } else {
-            recorder.record(CareType.CURVE_GUIDE, "커브 구간 · 부드러운 주행 안내", automatic = true)
+            delay(CURVE_STEP_MS)
+            setCurveStage(CurveStage.ADJUSTING)
         }
     }
+
+    /** Curve passed → "상태가 안정되어 바람 조절을 마쳤어요", then back to the normal screen. */
+    private fun onCurveEnded() {
+        if (!curveHandled) return
+        curveHandled = false
+        curveJob?.cancel()
+        val wasAdjusting = _state.value.curveStage == CurveStage.ADJUSTING || _state.value.curveStage == CurveStage.ADJUSTING_NOTICE
+        if (!wasAdjusting) {
+            _state.update { it.copy(curveStage = null) }
+            return
+        }
+        curveJob = viewModelScope.launch {
+            setCurveStage(CurveStage.STABLE)
+            delay(CURVE_STABLE_MS)
+            _state.update { it.copy(curveStage = null, rearFanActive = false) }
+        }
+    }
+
+    private fun setCurveStage(stage: CurveStage) = _state.update { it.copy(curveStage = stage) }
 
     // ---- A-01 / A-02 boarding ----
 
@@ -341,6 +386,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     fun applyScenario(scenario: DemoVehicleSource.Scenario) {
         enterDemoOverride()
         dismissed.clear()
+        if (!scenario.signals.curveAhead) onCurveEnded()
         demo.apply(scenario)
     }
 
@@ -366,5 +412,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val DISMISS_COOLDOWN_MS = 60_000L
+        const val CURVE_STEP_MS = 3_000L
+        const val CURVE_STABLE_MS = 4_000L
     }
 }
