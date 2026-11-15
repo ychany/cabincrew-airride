@@ -5,7 +5,13 @@
 #  3) Install the release APK and grant runtime permissions (vehicle speed, notifications)
 set -e
 cd "$(dirname "$0")/.."
-ADB="${ADB:-adb}"
+# adb from PATH, else the Android SDK default locations.
+if [ -z "$ADB" ]; then
+  if command -v adb >/dev/null 2>&1; then ADB=adb
+  elif [ -n "$ANDROID_HOME" ] && [ -x "$ANDROID_HOME/platform-tools/adb" ]; then ADB="$ANDROID_HOME/platform-tools/adb"
+  else ADB="$HOME/Library/Android/sdk/platform-tools/adb"
+  fi
+fi
 
 # Gangnam, Seoul (longitude latitude)
 LON="${LON:-127.0276}"
