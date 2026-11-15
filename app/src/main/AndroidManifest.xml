@@ -5,6 +5,12 @@
         android:name="android.hardware.type.automotive"
         android:required="false" />
 
+    <!-- Pleos Vehicle SDK: only the APIs AirRide uses. -->
+    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
