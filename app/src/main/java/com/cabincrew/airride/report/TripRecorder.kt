@@ -20,11 +20,16 @@ data class CareEvent(
     val automatic: Boolean,
 )
 
+data class ConditionSample(val timeMillis: Long, val alertness: Int, val motionSickness: Int)
+
 data class TripReport(
     val smoothnessScore: Int,
     val freshAirSwitches: Int,
     val careCount: Int,
     val events: List<CareEvent>,
+    val samples: List<ConditionSample>,
+    val startMillis: Long,
+    val endMillis: Long,
 )
 
 /** Records care events during a trip and builds the end-of-trip report (A-10). */
@@ -35,15 +40,19 @@ class TripRecorder {
 
     private var motionSum = 0L
     private var motionSamples = 0L
+    private var startMillis = System.currentTimeMillis()
+    private val samples = ArrayList<ConditionSample>()
 
     fun record(type: CareType, detail: String, automatic: Boolean = false) {
         _events.update { it + CareEvent(System.currentTimeMillis(), type, detail, automatic) }
     }
 
-    /** Feed motion-sickness samples to compute the smoothness score. */
-    fun sampleMotion(motionSickness: Int) {
+    /** Feed condition samples (≈1/s) for the smoothness score and the report chart. */
+    fun sample(alertness: Int, motionSickness: Int) {
         motionSum += motionSickness
         motionSamples++
+        samples += ConditionSample(System.currentTimeMillis(), alertness, motionSickness)
+        if (samples.size > MAX_SAMPLES) samples.removeAt(0)
     }
 
     fun buildReport(): TripReport {
@@ -54,6 +63,9 @@ class TripRecorder {
             freshAirSwitches = list.count { it.type == CareType.FRESH_AIR },
             careCount = list.size,
             events = list,
+            samples = samples.toList(),
+            startMillis = startMillis,
+            endMillis = System.currentTimeMillis(),
         )
     }
 
@@ -61,5 +73,11 @@ class TripRecorder {
         _events.value = emptyList()
         motionSum = 0
         motionSamples = 0
+        samples.clear()
+        startMillis = System.currentTimeMillis()
+    }
+
+    private companion object {
+        const val MAX_SAMPLES = 3_600
     }
 }

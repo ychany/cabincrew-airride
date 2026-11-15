@@ -66,7 +66,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
             launch {
                 while (isActive) {
                     delay(1_000)
-                    if (_state.value.signals.isDriving) recorder.sampleMotion(_state.value.condition.motionSickness)
+                    if (_state.value.signals.isDriving) _state.value.condition.let { recorder.sample(it.alertness, it.motionSickness) }
                 }
             }
         }
@@ -94,9 +94,9 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         when (val s = _state.value.suggestion) {
             Suggestion.FreshAir -> {
                 controller.switchToFreshAir { applied ->
-                    recorder.record(CareType.FRESH_AIR, if (applied) "내기 → 외기 (차량 적용)" else "내기 → 외기 (데모)")
+                    recorder.record(CareType.FRESH_AIR, if (applied) "외기로 전환" else "외기로 전환 (데모)")
                 }
-                showApplied("바깥 공기로 바꿨어요")
+                showApplied("외기로 바꿨어요")
             }
             is Suggestion.Rest -> {
                 recorder.record(CareType.REST, "${s.restAreaName} 경유지 추가")
@@ -104,7 +104,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
                 showApplied("${s.restAreaName}를 경유지로 추가했어요")
             }
             Suggestion.CurveAhead -> {
-                recorder.record(CareType.CURVE_GUIDE, "커브 전 부드러운 주행 안내")
+                recorder.record(CareType.CURVE_GUIDE, "커브 구간 · 부드러운 주행 안내")
                 dismissed += Suggestion.CurveAhead::class.java
                 showApplied("뒷자리를 위해 부드럽게 돌아가요")
             }
