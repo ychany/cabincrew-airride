@@ -132,14 +132,14 @@ fun IviButton(
 
 /** Care log row — colored dot, time, text, bottom divider. */
 @Composable
-fun CareLogRow(time: String, text: String, dot: Color, modifier: Modifier = Modifier) {
+fun CareLogRow(time: String, text: String, dot: Color?, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Box(Modifier.size(14.dp).background(dot, CircleShape))
+            if (dot != null) Box(Modifier.size(14.dp).background(dot, CircleShape))
             Text(time, color = AirColors.TextMuted, fontSize = 24.sp, fontWeight = FontWeight.Medium)
             Text(text, color = AirColors.Text, fontSize = 26.sp, modifier = Modifier.weight(1f))
         }

@@ -20,7 +20,7 @@ fun AirRideApp(vm: AirRideViewModel = viewModel()) {
             when {
                 state.connecting -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 // Report detail is parked-only.
-                report != null && !state.restricted -> ReportScreen(report, state.passenger?.name, vm::saveSettingsForNextTrip, vm::closeReport)
+                report != null && !state.restricted -> ReportScreen(report, state.passenger?.name, state.passenger?.photo, vm::saveSettingsForNextTrip, vm::closeReport)
                 // Boarding / rest-stop flows are parked-only screens.
                 state.phase == Phase.BOARDING_WHO && !state.restricted -> BoardingWhoScreen(vm::choosePassenger)
                 state.phase == Phase.BOARDING_CARE && !state.restricted -> state.pendingPassenger?.let { p ->
