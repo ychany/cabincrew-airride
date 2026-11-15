@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -125,7 +126,7 @@ private fun PassengerChipGauge(state: UiState, forceCalm: Boolean = false) {
 private fun RearSeatAirflow() {
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, 680.dp)
-        Box(Modifier.size(side), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(side).clipToBounds(), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val r = size.minDimension * 0.49f
                 val center = Offset(size.width / 2, size.height / 2)
@@ -137,7 +138,7 @@ private fun RearSeatAirflow() {
                 // Airflow beam (Figma Vector 1, rotated −18.7°), from the left toward the seat back.
                 val w = size.width * 0.96f
                 val h = w * 339.227f / 641.41f
-                val left = -size.width * 0.14f
+                val left = size.width * 0.02f
                 val top = size.height * 0.38f
                 fun px(x: Float) = left + x / 641.41f * w
                 fun py(y: Float) = top + y / 339.227f * h
