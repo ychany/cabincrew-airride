@@ -19,7 +19,8 @@
 
 ## APK
 
-- 위치: [`apk/CabinCrew_AirRide_release.apk`](apk/CabinCrew_AirRide_release.apk) (서명된 release 빌드)
+- 위치: [`apk/CabinCrew_AirRide_release.apk`](apk/CabinCrew_AirRide_release.apk) (서명된 release 빌드, minSdk 28)
+- 다운로드: https://github.com/ychany/cabincrew-airride/raw/main/apk/CabinCrew_AirRide_release.apk
 
 ## 실행 방법
 
