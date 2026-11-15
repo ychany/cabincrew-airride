@@ -60,6 +60,8 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 **휴게소 데이터**: 휴식 제안의 휴게소는 데모용으로 **경부고속도로 망향휴게소(부산방향)** 하나로 고정되어 있습니다. 좌표는 휴게소 부근 근사값(위도 36.8945, 경도 127.1878)이며, [경유지 추가]를 누르면 이 좌표로 내비에 경로를 요청합니다. 제안 카드의 거리·시간("약 12km 앞", "약 8분 후")은 데모 고정값이고, 실제 경로 거리와 소요 시간은 내비가 계산해 안내합니다 (서울 강남 출발 시 약 63km, 54분). 주행 경로 기반 휴게소 검색은 이후 연동 예정입니다.
 
+**케어 설정 (정차 중 홈 화면)**: 뒷좌석 바람 조절, 커브 전 음성 안내, 운전석 시원하게(외기 전환 시 운전석 1.5℃↓), 미세먼지 모드(외기를 2분만 열고 다시 내기순환 — 한국교통안전공단 권고: 내기순환 중 1~2시간마다 1~2분 외기 전환). A-10의 [다음 여행에도 이 설정 쓰기]로 저장됩니다.
+
 ### 3. 시나리오 재현 순서
 
 앱을 실행하면 정차 상태에서 **탑승 확인(A-01)** 화면이 먼저 나옵니다.
@@ -68,7 +70,7 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 |---|---|---|
 | 1 | 동승자 `민준` 선택 → 케어 항목(뒷좌석 바람 조절 / 커브 전 음성 안내) 선택 → [케어 시작] | **A-01 탑승 확인 → A-02 동승 모드** → 홈 |
 | 2 | 데모 패널 `평온한 주행` | 운전자 각성 **좋음** / 민준 멀미 **편안함**, 제안 없음 |
-| 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요? / 내기순환이 N분째 유지되고 있어요" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF) |
+| 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요? / 내기순환이 N분째 유지되고 있어요" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF, "운전석 시원하게"가 켜져 있으면 운전석 설정 온도 1.5℃ 낮춤, "미세먼지 모드"가 켜져 있으면 2분 뒤 다시 내기순환) |
 | 4 | 데모 패널 `멀미 위험 (커브 구간)` | **A-05** "곧 커브예요 / 급가속과 급제동을 줄여주세요" 음성 안내 카드 + 멀미 게이지 + `뒷좌석 바람 조절 중` (차량 연결 시 실제 HVAC 풍량 조절, 음성 안내는 TTS) |
 | 5 | 데모 패널 `졸음 위험` | **A-08** "망향휴게소에서 잠시 쉬어 갈까요? / 약 N분 후 현재 경로에 있어요" → [경유지 추가] → **NaviHelper SDK로 내비에 경유지(경로가 없으면 목적지)를 요청**, 내비가 경로 안내를 시작 (A-08-2) |
 | 6 | 데모 패널 `정차 (P)` (또는 내비의 휴게소 도착 이벤트) | **A-09 휴게소 도착**: 정차 확인 → [환기하기] → 쉰 뒤 상태 확인 → [다시 출발하기] |
@@ -95,7 +97,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | 권한 | 용도 |
 |---|---|
 | `pleos.car.permission.CAR_CLIMATE` | HVAC 내기순환 상태 조회·구독 |
-| `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`), 뒷좌석 바람 조절 (`setHvacFanSpeed`) |
+| `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`), 뒷좌석 바람 조절 (`setHvacFanSpeed`), 운전석 온도 (`setHvacTemperature`) |
 | `pleos.car.permission.CAR_DRIVE` | 기어 상태(P/D) → 주행/정차 판단, 조향각 → 미세 보정 빈도 |
 | `pleos.car.permission.NAVI_ROUTE`, `NAVI_ROUTE_SEARCH` | 휴게소 경로·경유지 요청 |
 | `android.car.permission.CAR_SPEED` | 차속 → 가감속 변화 (실행 시 권한 요청) |
@@ -114,6 +116,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 |---|---|---|
 | Vehicle – HVAC | `checkHvacRecirculationCapabilities`, `getHvacRecirculationState`, `registerHvacRecirculationState`, `setHvacRecirculation` | 내기순환 지속 시간 → 추정 CO₂, 외기 전환 |
 | Vehicle – HVAC | `checkHvacFanSpeedCapabilities`, `setHvacFanSpeed` | 커브 구간 뒷좌석 바람 조절 |
+| Vehicle – HVAC | `checkHvacTemperatureCapabilities`, `getHvacTemperature`, `setHvacTemperature` | 외기 전환 시 운전석 온도 1.5℃ 낮춤 |
 | Vehicle – Gear | `registerGearSelection` | 주행/정차 |
 | Vehicle – SteeringWheel | `registerSteeringWheelAngle` | 조향 미세 보정 빈도 |
 | NaviHelper | `requestRoute`, `addWaypoint`, `getRouteStateInfo`, `onWayPointArrived` / `onDestinationArrived` | 휴게소 경유지 추가, 도착 시 A-09 전환 |
