@@ -81,7 +81,7 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 - **위치**: [`apk/CabinCrew_AirRide_release.apk`](apk/CabinCrew_AirRide_release.apk) (서명된 release 빌드, minSdk 28)
 - **다운로드**: https://github.com/ychany/cabincrew-airride/raw/main/apk/CabinCrew_AirRide_release.apk
-- **시연 영상**: [`demo-videos/AirRide_시연영상.mp4`](demo-videos/AirRide_시연영상.mp4) (66초, A-01~A-10 전체 흐름, Pleos Connect 에뮬레이터 실제 화면)
+- **시연 영상**: [`demo-videos/CabinCrew_AirRide_02_에뮬레이터_시연.mp4`](demo-videos/CabinCrew_AirRide_02_에뮬레이터_시연.mp4) (66초, A-01~A-10 전체 흐름, Pleos Connect 에뮬레이터 실제 화면)
 
 ---
 
