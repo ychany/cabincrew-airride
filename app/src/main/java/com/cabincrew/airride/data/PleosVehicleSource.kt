@@ -36,7 +36,12 @@ class PleosVehicleSource(
     val hvacArea: SeatArea,
 ) : VehicleSignalSource {
 
-    override val isDemo: Boolean = false
+    private val demoOverride = MutableStateFlow(false)
+    override val isDemo: Boolean get() = demoOverride.value
+
+    override fun setDemoOverride(on: Boolean) {
+        demoOverride.value = on
+    }
 
     private data class Live(
         val driving: Boolean? = null,
@@ -48,7 +53,8 @@ class PleosVehicleSource(
     private val live = MutableStateFlow(Live())
 
     override val signals: StateFlow<VehicleSignals> =
-        combine(base.signals, live) { demo, l ->
+        combine(base.signals, live, demoOverride) { demo, l, override ->
+            if (override) return@combine demo
             demo.copy(
                 isDriving = l.driving ?: demo.isDriving,
                 recirculationOn = l.recirc ?: demo.recirculationOn,
@@ -128,7 +134,7 @@ class PleosVehicleSource(
                 val l = live.value
                 live.value = l.copy(correctionsPerMin = if (lastAngle != null) perMin else null)
                 // Recirculation duration drives the CO₂ estimate.
-                l.recircSinceMs?.let { since ->
+                if (!demoOverride.value) l.recircSinceMs?.let { since ->
                     base.update { it.copy(recircMinutes = (now - since) / 60_000f) }
                 }
             }

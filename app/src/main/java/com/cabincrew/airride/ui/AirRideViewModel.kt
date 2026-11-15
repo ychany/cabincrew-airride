@@ -147,8 +147,20 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun applyScenario(scenario: DemoVehicleSource.Scenario) {
+        enterDemoOverride()
         dismissed.clear()
         demo.apply(scenario)
+    }
+
+    fun updateDemo(transform: (VehicleSignals) -> VehicleSignals) {
+        enterDemoOverride()
+        demo.update(transform)
+    }
+
+    private fun enterDemoOverride() {
+        if (source.isDemo) return
+        source.setDemoOverride(true)
+        _state.update { it.copy(demoMode = true) }
     }
 
     override fun onCleared() {

@@ -34,7 +34,7 @@ fun AirRideApp(vm: AirRideViewModel = viewModel()) {
                 DemoPanel(
                     signals = state.signals,
                     onScenario = vm::applyScenario,
-                    onChange = { vm.demo.update(it) },
+                    onChange = vm::updateDemo,
                     onClose = { vm.toggleDemoPanel(false) },
                     modifier = Modifier.align(Alignment.CenterEnd),
                 )
