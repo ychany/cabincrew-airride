@@ -1,6 +1,11 @@
 package com.cabincrew.airride.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.painterResource
+import com.cabincrew.airride.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,12 +37,10 @@ fun RestStopScreen(state: UiState, onVentilate: (Boolean) -> Unit, onDone: () ->
         caption = { StatusChip("$name · 정차 중", AirColors.TextMuted) },
     ) {
         Column(Modifier.widthIn(max = 1124.dp), verticalArrangement = Arrangement.spacedBy(36.dp)) {
-            Steps(state.restStep)
             when (state.restStep) {
                 RestStep.VENTILATE -> {
-                    SuggestionCard("실내를 환기할까요?", "${name}에 정차했어요", "환기하기", { onVentilate(true) }, "건너뛰기", { onVentilate(false) })
-                    Text("외기로 전환해 실내 공기를 바꿔요", color = AirColors.TextSub, fontSize = 26.sp)
-                    Text("환기 후 잠시 쉬면 두 사람의 컨디션을 다시 확인해 드릴게요", color = AirColors.TextMuted, fontSize = 26.sp)
+                    VentilateCard({ onVentilate(true) }, { onVentilate(false) })
+                    Text("외기로 3분간 환기해요", color = AirColors.TextMuted, fontSize = 26.sp)
                 }
                 RestStep.RECHECK -> {
                     val c = state.condition
@@ -52,6 +55,29 @@ fun RestStopScreen(state: UiState, onVentilate: (Boolean) -> Unit, onDone: () ->
     }
 }
 
+/** A-09 (프로토타입): wind icon + "실내를 환기할까요?" with two buttons. */
+@Composable
+private fun VentilateCard(onYes: () -> Unit, onNo: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(48.dp))
+            .background(AirColors.Notification, RoundedCornerShape(48.dp))
+            .border(1.dp, AirColors.DividerSoft, RoundedCornerShape(48.dp)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 40.dp, end = 40.dp, top = 36.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(painterResource(R.drawable.ic_wind_4step), contentDescription = null, modifier = Modifier.size(48.dp))
+            Text("실내를 환기할까요?", color = Color.White, fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold)
+        }
+        Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            IviButton("환기하기", onYes, filled = true, modifier = Modifier.weight(1f))
+            IviButton("건너뛰기", onNo, filled = false, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Suppress("unused")
 @Composable
 private fun Steps(step: RestStep) {
     val current = if (step == RestStep.VENTILATE) 2 else 3
