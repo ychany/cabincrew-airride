@@ -46,46 +46,51 @@ fun HomeScreen(
     onCare: (CareOptions) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
-    // Split with navigation (A-04~A-08: 840dp app panel next to the map) → app column only.
-    val compact = maxWidth < 1300.dp
-    Row(Modifier.fillMaxSize().padding(if (compact) 0.dp else 20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        // Cabin side
-        if (!compact) Column(
-            Modifier.weight(1f).fillMaxHeight().background(AirColors.Panel, RoundedCornerShape(32.dp)).padding(40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        // Split with navigation (A-04~A-08: 840dp app panel next to the map) → app column only.
+        // Full width → one panel: cabin view on the left, content on the right (same frame as A-01/A-09).
+        val compact = maxWidth < 1300.dp
+        Row(
+            Modifier.fillMaxSize().padding(if (compact) 0.dp else 20.dp)
+                .background(AirColors.Panel, RoundedCornerShape(32.dp))
+                .padding(horizontal = if (compact) 56.dp else 72.dp, vertical = 56.dp),
+            horizontalArrangement = Arrangement.spacedBy(64.dp),
         ) {
-            CabinTopView(if (state.passenger != null) SeatState.ACTIVE else SeatState.EMPTY)
-            Spacer(Modifier.height(32.dp))
-            Text(
-                if (state.passenger != null) "뒷좌석 왼쪽 · ${state.passengerName}" else "운전자 단독 주행",
-                color = if (state.passenger != null) AirColors.Passenger else AirColors.TextSub, fontSize = 26.sp,
-            )
-            Spacer(Modifier.height(16.dp))
-            StatusChip(
-                if (state.signals.recirculationOn) "내기순환" else "외기 유입",
-                if (state.signals.recirculationOn) AirColors.Warn else AirColors.Ok,
-            )
-        }
-
-        // App column (840dp per design)
-        Column(
-            (if (compact) Modifier.fillMaxWidth() else Modifier.width(840.dp)).fillMaxHeight().background(AirColors.Panel, RoundedCornerShape(32.dp)).padding(56.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp),
-        ) {
-            Header(state, onOpenDemo)
-            if (state.suggestion == Suggestion.CurveAhead) {
-                CurveGuide(state)
-            } else {
-                Gauges(state)
-                when {
-                    state.appliedMessage != null -> AppliedCard(state.appliedMessage)
-                    state.suggestion != null -> SuggestionFor(state, state.suggestion, onAccept, onDismiss)
-                    !state.restricted -> ParkedExtras(state, onEndTrip, onCare)
+            if (!compact) {
+                Column(
+                    Modifier.fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CabinTopView(if (state.passenger != null) SeatState.ACTIVE else SeatState.EMPTY)
+                    Spacer(Modifier.height(28.dp))
+                    Text(
+                        if (state.passenger != null) "뒷좌석 왼쪽 · ${state.passengerName}" else "운전자 단독 주행",
+                        color = if (state.passenger != null) AirColors.Passenger else AirColors.TextSub, fontSize = 24.sp,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    StatusChip(
+                        if (state.signals.recirculationOn) "내기순환" else "외기 유입",
+                        if (state.signals.recirculationOn) AirColors.Warn else AirColors.Ok,
+                    )
+                }
+            }
+            Column(
+                Modifier.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(28.dp),
+            ) {
+                Header(state, onOpenDemo)
+                if (state.suggestion == Suggestion.CurveAhead) {
+                    CurveGuide(state)
+                } else {
+                    Gauges(state)
+                    when {
+                        state.appliedMessage != null -> AppliedCard(state.appliedMessage)
+                        state.suggestion != null -> SuggestionFor(state, state.suggestion, onAccept, onDismiss)
+                        !state.restricted -> ParkedExtras(state, onEndTrip, onCare)
+                    }
                 }
             }
         }
-    }
     }
 }
 
