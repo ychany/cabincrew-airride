@@ -51,6 +51,8 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 **실제 차량 신호로 확인 (Pleos Connect Virtual Console)**: `adb forward tcp:8088 tcp:8088` 후 PC 브라우저에서 `http://127.0.0.1:8088/`을 엽니다. Motion에서 기어를 **D**로 바꾸면 AirRide가 SDK 기어 신호로 주행 모드(케어 중, 설정·리포트 숨김)로 전환되고, 차속을 바꾸면 AAOS 차속(`PERF_VEHICLE_SPEED`)으로 계산한 가감속이 멀미 지수에 반영됩니다. Climate의 내기순환·풍량 변경도 앱에 반영됩니다.
 
+> 참고: 에뮬레이터 내비는 경로선·턴바이턴 안내는 표시하지만 바탕 지도(도로·건물) 타일은 표시하지 않습니다. 에뮬레이터 GPS 기본 위치가 미국이므로 `adb emu geo fix 127.0276 37.4979`로 서울로 옮긴 뒤 시연하세요.
+
 > 참고: `adb install`로 설치한 앱은 설치 출처가 앱 마켓이 아니어서 AAOS가 Distraction Optimized 선언을 적용하지 않습니다. 그래서 에뮬레이터에서 **차속이 0보다 커지면 시스템이 앱 화면을 "주행 중에는 사용할 수 없습니다"로 가립니다.** 앱 마켓으로 배포되면 선언이 적용됩니다. 에뮬레이터 시연은 기어 D·차속 0 상태 또는 데모 패널로 진행합니다.
 
 ### 3. 시나리오 재현 순서
@@ -63,8 +65,8 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 | 2 | 데모 패널 `평온한 주행` | 운전자 각성 **좋음** / 민준 멀미 **편안함**, 제안 없음 |
 | 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요? / 내기순환이 N분째 유지되고 있어요" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF) |
 | 4 | 데모 패널 `멀미 위험 (커브 구간)` | **A-05** "곧 커브예요 / 급가속과 급제동을 줄여주세요" 음성 안내 카드 + 멀미 게이지 + `뒷좌석 바람 조절 중` (차량 연결 시 실제 HVAC 풍량 조절, 음성 안내는 TTS) |
-| 5 | 데모 패널 `졸음 위험` | **A-08** "○○휴게소에서 잠시 쉬어 갈까요? / 약 N분 후 현재 경로에 있어요" → [경유지 추가] |
-| 6 | 데모 패널 `정차 (P)` | **A-09 휴게소 도착**: 정차 확인 → [환기하기] → 쉰 뒤 상태 확인 → [다시 출발하기] |
+| 5 | 데모 패널 `졸음 위험` | **A-08** "○○휴게소에서 잠시 쉬어 갈까요? / 약 N분 후 현재 경로에 있어요" → [경유지 추가] → **NaviHelper SDK로 내비에 경유지(경로가 없으면 목적지)를 요청**, 내비가 경로 안내를 시작 (A-08-2) |
+| 6 | 데모 패널 `정차 (P)` (또는 내비의 휴게소 도착 이벤트) | **A-09 휴게소 도착**: 정차 확인 → [환기하기] → 쉰 뒤 상태 확인 → [다시 출발하기] |
 | 7 | 정차 홈에서 [주행 종료 리포트] | **A-10** "민준이와 함께한 주행을 마쳤어요": 부드러운 주행 점수, 케어 적용·휴식 횟수, 구간별 컨디션 그래프(실제 기록), 차가 대신한 케어 기록, [다음 여행에도 이 설정 쓰기] |
 
 ## 테스트 환경 및 설정
@@ -79,6 +81,7 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 | Gradle / AGP / Kotlin | 8.10.2 / 8.8.2 / 2.0.0 |
 | minSdk / targetSdk | 28 / 35 |
 | Pleos Vehicle SDK | `ai.pleos.playground:Vehicle:2.3.2` |
+| Pleos NaviHelper SDK | `ai.pleos.playground:NaviHelper:3.0.5` |
 
 ### 권한
 
@@ -89,6 +92,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | `pleos.car.permission.CAR_CLIMATE` | HVAC 내기순환 상태 조회·구독 |
 | `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`), 뒷좌석 바람 조절 (`setHvacFanSpeed`) |
 | `pleos.car.permission.CAR_DRIVE` | 기어 상태(P/D) → 주행/정차 판단, 조향각 → 미세 보정 빈도 |
+| `pleos.car.permission.NAVI_ROUTE`, `NAVI_ROUTE_SEARCH` | 휴게소 경로·경유지 요청 |
 | `android.car.permission.CAR_SPEED` | 차속 → 가감속 변화 (실행 시 권한 요청) |
 | `android.permission.POST_NOTIFICATIONS` | 앱이 가려져 있을 때 제안 알림 (실행 시 권한 요청) |
 
@@ -107,6 +111,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | Vehicle – HVAC | `checkHvacFanSpeedCapabilities`, `setHvacFanSpeed` | 커브 구간 뒷좌석 바람 조절 |
 | Vehicle – Gear | `registerGearSelection` | 주행/정차 |
 | Vehicle – SteeringWheel | `registerSteeringWheelAngle` | 조향 미세 보정 빈도 |
+| NaviHelper | `requestRoute`, `addWaypoint`, `getRouteStateInfo`, `onWayPointArrived` / `onDestinationArrived` | 휴게소 경유지 추가, 도착 시 A-09 전환 |
 | AAOS | `CarUxRestrictionsManager` | 주행 중 UI 제한 |
 | AAOS | `CarPropertyManager` · `PERF_VEHICLE_SPEED` | 차속 → 가감속 변화 (멀미 지수) |
 | Android | `TextToSpeech` | 커브 전 음성 안내 |
@@ -127,7 +132,7 @@ app/src/main/java/com/cabincrew/airride/
   engine/    ConditionEngine (각성·멀미 지수), SuggestionPolicy
   control/   CabinController (HVAC 제어), DrivingRestriction (CarUxRestrictions)
   report/    TripRecorder (케어 기록 → 주행 종료 리포트)
-  control/   VoiceGuide (TTS)
+  control/   VoiceGuide (TTS), NaviBridge (NaviHelper 경유지)
   notify/    SuggestionNotifier (화면 밖 제안 알림)
   ui/        BoardingScreen (A-01·A-02), HomeScreen (A-03~A-08), RestStopScreen (A-09),
              ReportScreen (A-10), CabinTopView, Components, DemoPanel, AirRideViewModel
