@@ -153,8 +153,8 @@ fun Heading(title: String, sub: String) {
 }
 
 @Composable
-fun ToggleRow(title: String, sub: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+fun ToggleRow(title: String, sub: String, checked: Boolean, compact: Boolean = false, onChecked: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = if (compact) 14.dp else 22.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, color = AirColors.Text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             Text(sub, color = AirColors.TextMuted, fontSize = 24.sp)

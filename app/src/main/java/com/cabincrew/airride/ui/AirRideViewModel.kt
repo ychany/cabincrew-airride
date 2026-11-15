@@ -45,7 +45,14 @@ enum class Phase { BOARDING_WHO, BOARDING_CARE, MAIN, REST_STOP }
 /** A-09 휴게소 도착 steps: 1 정차 확인 → 2 환기 → 3 쉰 뒤 상태 확인 */
 enum class RestStep { VENTILATE, RECHECK }
 
-data class CareOptions(val rearFan: Boolean = true, val curveVoice: Boolean = false)
+data class CareOptions(
+    val rearFan: Boolean = true,
+    val curveVoice: Boolean = false,
+    /** 외기 전환 시 운전석 온도 1.5℃ 낮추기 */
+    val coolDriver: Boolean = true,
+    /** 미세먼지 모드: 외기를 2분만 열고 다시 내기순환 */
+    val briefFreshAir: Boolean = false,
+)
 
 data class UiState(
     val connecting: Boolean = true,
@@ -92,7 +99,14 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private var restPending: String? = null
 
     private val _state = MutableStateFlow(
-        UiState(care = CareOptions(prefs.getBoolean("rearFan", true), prefs.getBoolean("curveVoice", false)))
+        UiState(
+            care = CareOptions(
+                rearFan = prefs.getBoolean("rearFan", true),
+                curveVoice = prefs.getBoolean("curveVoice", false),
+                coolDriver = prefs.getBoolean("coolDriver", true),
+                briefFreshAir = prefs.getBoolean("briefFreshAir", false),
+            ),
+        )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
@@ -209,10 +223,30 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     fun acceptSuggestion() {
         when (val s = _state.value.suggestion) {
             Suggestion.FreshAir -> {
-                controller.switchToFreshAir { applied ->
+                val care = _state.value.care
+                controller.switchToFreshAir(
+                    brief = care.briefFreshAir,
+                    onRestored = { applied ->
+                        recorder.record(CareType.CABIN_ADJUST, if (applied) "미세먼지 모드 · 다시 내기순환" else "미세먼지 모드 · 다시 내기순환 (데모)", automatic = true)
+                    },
+                ) { applied ->
                     recorder.record(CareType.FRESH_AIR, if (applied) "외기로 전환" else "외기로 전환 (데모)")
                 }
-                showApplied("외기로 바꿨어요")
+                if (care.coolDriver) {
+                    controller.coolDriverSeat { celsius ->
+                        recorder.record(
+                            CareType.CABIN_ADJUST,
+                            if (celsius != null) "운전석 온도 %.1f℃로 낮춤".format(celsius) else "운전석 온도 낮춤 (데모)",
+                        )
+                    }
+                }
+                showApplied(
+                    when {
+                        care.briefFreshAir -> "외기로 2분간 환기할게요"
+                        care.coolDriver -> "외기로 바꾸고 운전석을 시원하게 했어요"
+                        else -> "외기로 바꿨어요"
+                    }
+                )
             }
             is Suggestion.Rest -> {
                 // A-08-2: hand the rest area to the navigation app (NaviHelper SDK).
@@ -284,7 +318,10 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     /** A-10 "다음 여행에도 이 설정 쓰기" */
     fun saveSettingsForNextTrip() {
         val care = _state.value.care
-        prefs.edit().putBoolean("rearFan", care.rearFan).putBoolean("curveVoice", care.curveVoice).apply()
+        prefs.edit()
+            .putBoolean("rearFan", care.rearFan).putBoolean("curveVoice", care.curveVoice)
+            .putBoolean("coolDriver", care.coolDriver).putBoolean("briefFreshAir", care.briefFreshAir)
+            .apply()
         Toast.makeText(getApplication(), "다음 여행에도 이 설정을 쓸게요", Toast.LENGTH_SHORT).show()
         closeReport()
     }

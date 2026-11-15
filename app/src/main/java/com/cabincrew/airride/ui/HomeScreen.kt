@@ -217,15 +217,23 @@ private fun AppliedCard(msg: String) {
 /** Parked (P) only: care options + report entry. */
 @Composable
 private fun ParkedExtras(state: UiState, onEndTrip: () -> Unit, onCare: (CareOptions) -> Unit) {
+    val care = state.care
     Column(Modifier.fillMaxWidth()) {
-        if (state.passenger != null) {
-            Column(Modifier.fillMaxWidth().background(AirColors.Card, RoundedCornerShape(32.dp))) {
-                ToggleRow("뒷좌석 바람 조절", "커브 구간 자동 적용", state.care.rearFan) { onCare(state.care.copy(rearFan = it)) }
-                Box(Modifier.fillMaxWidth().height(2.dp).background(AirColors.Divider))
-                ToggleRow("커브 전 음성 안내", "운전자에게 미리 알려요", state.care.curveVoice) { onCare(state.care.copy(curveVoice = it)) }
+        Column(Modifier.fillMaxWidth().background(AirColors.Card, RoundedCornerShape(32.dp))) {
+            if (state.passenger != null) {
+                ToggleRow("뒷좌석 바람 조절", "커브 구간 자동 적용", care.rearFan, compact = true) { onCare(care.copy(rearFan = it)) }
+                Divider()
+                ToggleRow("커브 전 음성 안내", "운전자에게 미리 알려요", care.curveVoice, compact = true) { onCare(care.copy(curveVoice = it)) }
+                Divider()
             }
-            Spacer(Modifier.height(28.dp))
+            ToggleRow("운전석 시원하게", "외기로 바꿀 때 1.5℃ 낮춰요", care.coolDriver, compact = true) { onCare(care.copy(coolDriver = it)) }
+            Divider()
+            ToggleRow("미세먼지 모드", "외기를 2분만 열고 다시 닫아요", care.briefFreshAir, compact = true) { onCare(care.copy(briefFreshAir = it)) }
         }
-        IviButton("주행 종료 리포트", onEndTrip, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
+        Spacer(Modifier.height(24.dp))
+        IviButton("주행 종료 리포트", onEndTrip, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 96.dp, radius = 32.dp, fontSize = 32)
     }
 }
+
+@Composable
+private fun Divider() = Box(Modifier.fillMaxWidth().height(2.dp).background(AirColors.Divider))
