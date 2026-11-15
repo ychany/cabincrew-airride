@@ -11,6 +11,9 @@
     <!-- Gear selection + steering wheel angle (SDK @RequiresCustomPermission). -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
 
+    <!-- Heads-up suggestion over the navigation map (A-06 / A-08). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Android 11+ package visibility for TextToSpeech engines. -->
     <queries>
         <intent>
@@ -44,5 +47,9 @@
                 android:name="distractionOptimized"
                 android:value="true" />
         </activity>
+
+        <receiver
+            android:name=".notify.SuggestionActionReceiver"
+            android:exported="false" />
     </application>
 </manifest>
