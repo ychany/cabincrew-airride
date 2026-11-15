@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.border
 import androidx.compose.ui.res.painterResource
 import com.cabincrew.airride.R
 import androidx.compose.material3.Text
@@ -86,6 +88,7 @@ fun HomeScreen(
                     Gauges(state)
                     when {
                         state.appliedMessage != null -> AppliedCard(state.appliedMessage)
+                        state.suggestion is Suggestion.Rest && state.restIntro -> RestIntro(state.suggestion)
                         state.suggestion != null -> SuggestionFor(state, state.suggestion, onAccept, onDismiss)
                         !state.restricted -> ParkedExtras(state, onEndTrip, onCare)
                     }
@@ -151,6 +154,24 @@ private fun PassengerGauge(state: UiState, detail: String? = null) {
     )
 }
 
+
+/** A-08 (프로토타입) 첫 단계: Gleo orb + notice without buttons. */
+@Composable
+private fun RestIntro(s: Suggestion.Rest) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Image(painterResource(R.drawable.gleo_orb), contentDescription = null, modifier = Modifier.size(72.dp).blur(1.25.dp))
+        Column(
+            Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(48.dp))
+                .background(AirColors.Notification, RoundedCornerShape(48.dp))
+                .border(1.dp, AirColors.DividerSoft, RoundedCornerShape(48.dp))
+                .padding(horizontal = 40.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("피로가 쌓인 것 같아요. 잠시 쉬어 갈까요?", color = Color.White, fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold)
+            Text("약 ${restEtaMinutes(s)}분 후 경로에 ${s.restAreaName}가 있어요", color = AirColors.TextTertiary, fontSize = 26.sp, lineHeight = 34.sp)
+        }
+    }
+}
 
 @Composable
 private fun SuggestionFor(state: UiState, s: Suggestion, onAccept: () -> Unit, onDismiss: () -> Unit) {

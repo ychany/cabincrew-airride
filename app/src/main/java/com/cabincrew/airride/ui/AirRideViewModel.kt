@@ -73,6 +73,8 @@ data class UiState(
     val appliedMessage: String? = null,
     /** A-05: rear fan softened during the current curve. */
     val rearFanActive: Boolean = false,
+    /** A-08 first step: orb + "피로가 쌓인 것 같아요" notice without buttons, then the card with buttons. */
+    val restIntro: Boolean = false,
     /** Non-null while the A-05 curve sequence is on screen. */
     val curveStage: CurveStage? = null,
     val restAreaName: String? = null,
@@ -101,6 +103,8 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private var controller = CabinController(null, null, demo)
     private val dismissed = mutableSetOf<Class<out Suggestion>>()
     private var curveHandled = false
+    private var restShown = false
+    private var restIntroJob: kotlinx.coroutines.Job? = null
     private var restPending: String? = null
 
     private val _state = MutableStateFlow(
@@ -156,7 +160,21 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         val st = _state.value
-        syncNotification(st)
+        val isRest = st.suggestion is Suggestion.Rest
+        if (isRest && !restShown) {
+            restShown = true
+            restIntroJob?.cancel()
+            _state.update { it.copy(restIntro = true) }
+            restIntroJob = viewModelScope.launch {
+                delay(REST_INTRO_MS)
+                _state.update { it.copy(restIntro = false) }
+            }
+        } else if (!isRest && restShown) {
+            restShown = false
+            restIntroJob?.cancel()
+            _state.update { it.copy(restIntro = false) }
+        }
+        syncNotification(_state.value)
         if (st.suggestion == Suggestion.CurveAhead) onCurve() else if (!st.signals.curveAhead) onCurveEnded()
         // Arrived at the rest area: parked after accepting the rest suggestion → A-09.
         val pending = restPending
@@ -413,6 +431,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         const val DISMISS_COOLDOWN_MS = 60_000L
         const val CURVE_STEP_MS = 3_000L
+        const val REST_INTRO_MS = 3_000L
         const val CURVE_STABLE_MS = 4_000L
     }
 }
