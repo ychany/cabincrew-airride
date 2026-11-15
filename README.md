@@ -47,6 +47,8 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 > 에뮬레이터에서 지원하지 않는 신호(차속, 가감속, 커브, 차선 경고, 탑승 인원)는 데모 값으로 동작합니다.
 
+**AirRide가 화면에 없을 때 (내비 전체 화면)**: 제안은 같은 문구의 Android 알림(버튼 2개)으로 전달되고, 적용 결과는 토스트로 안내합니다. 단, 현재 Pleos Connect 에뮬레이터는 서드파티 앱의 헤즈업 알림을 화면에 띄우지 않으므로, 에뮬레이터 시연은 위의 분할 화면(가운데 내비 + 오른쪽 AirRide)으로 진행합니다.
+
 ### 3. 시나리오 재현 순서
 
 앱을 실행하면 정차 상태에서 **탑승 확인(A-01)** 화면이 먼저 나옵니다.
@@ -55,11 +57,11 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 |---|---|---|
 | 1 | 동승자 `민준` 선택 → 케어 항목(뒷좌석 바람 조절 / 커브 전 음성 안내) 선택 → [케어 시작] | **A-01 탑승 확인 → A-02 동승 모드** → 홈 |
 | 2 | 데모 패널 `평온한 주행` | 운전자 각성 **좋음** / 민준 멀미 **편안함**, 제안 없음 |
-| 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요?" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF) |
+| 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요? / 내기순환이 N분째 유지되고 있어요" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF) |
 | 4 | 데모 패널 `멀미 위험 (커브 구간)` | **A-05** "곧 커브예요 / 급가속과 급제동을 줄여주세요" 음성 안내 카드 + 멀미 게이지 + `뒷좌석 바람 조절 중` (차량 연결 시 실제 HVAC 풍량 조절, 음성 안내는 TTS) |
-| 5 | 데모 패널 `졸음 위험` | **A-08** "○○휴게소에서 쉬어 갈까요?" → [경유지 추가] |
+| 5 | 데모 패널 `졸음 위험` | **A-08** "○○휴게소에서 잠시 쉬어 갈까요? / 약 N분 후 현재 경로에 있어요" → [경유지 추가] |
 | 6 | 데모 패널 `정차 (P)` | **A-09 휴게소 도착**: 정차 확인 → [환기하기] → 쉰 뒤 상태 확인 → [다시 출발하기] |
-| 7 | 정차 홈에서 [주행 종료 리포트] | **A-10**: 부드러움 점수, 외기 전환 횟수, 차가 대신한 케어, 구간별 컨디션 그래프(실제 기록), 케어 기록 |
+| 7 | 정차 홈에서 [주행 종료 리포트] | **A-10** "민준이와 함께한 주행을 마쳤어요": 부드러운 주행 점수, 케어 적용·휴식 횟수, 구간별 컨디션 그래프(실제 기록), 차가 대신한 케어 기록, [다음 여행에도 이 설정 쓰기] |
 
 ## 테스트 환경 및 설정
 
@@ -101,6 +103,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | Vehicle – SteeringWheel | `registerSteeringWheelAngle` | 조향 미세 보정 빈도 |
 | AAOS | `CarUxRestrictionsManager` | 주행 중 UI 제한 |
 | Android | `TextToSpeech` | 커브 전 음성 안내 |
+| Android | `NotificationManager` (heads-up, 액션 2개) | 앱이 가려져 있을 때 외기·휴식 제안 |
 
 ## 주행 안전
 
@@ -118,6 +121,7 @@ app/src/main/java/com/cabincrew/airride/
   control/   CabinController (HVAC 제어), DrivingRestriction (CarUxRestrictions)
   report/    TripRecorder (케어 기록 → 주행 종료 리포트)
   control/   VoiceGuide (TTS)
+  notify/    SuggestionNotifier (화면 밖 제안 알림)
   ui/        BoardingScreen (A-01·A-02), HomeScreen (A-03~A-08), RestStopScreen (A-09),
              ReportScreen (A-10), CabinTopView, Components, DemoPanel, AirRideViewModel
 apk/         CabinCrew_AirRide_release.apk
