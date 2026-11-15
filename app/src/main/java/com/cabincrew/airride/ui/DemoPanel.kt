@@ -37,13 +37,13 @@ fun DemoPanel(
 ) {
     Column(
         modifier.width(460.dp).fillMaxHeight()
-            .background(AirColors.SurfaceHigh, RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
+            .background(AirColors.Card, RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("데모 패널", color = AirColors.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("닫기", color = AirColors.Accent, fontSize = 20.sp, modifier = Modifier.padding(8.dp).clickableNoRipple(onClose))
+            Text("닫기", color = AirColors.DriverStatus, fontSize = 20.sp, modifier = Modifier.padding(8.dp).clickableNoRipple(onClose))
         }
         Spacer(Modifier.height(12.dp))
         Text("시나리오", color = AirColors.TextSub, fontSize = 16.sp)
