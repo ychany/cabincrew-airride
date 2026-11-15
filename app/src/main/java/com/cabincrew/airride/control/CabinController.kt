@@ -3,6 +3,7 @@ package com.cabincrew.airride.control
 import android.util.Log
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
+import ai.pleos.playground.vehicle.constant.area.SeatValue
 import com.cabincrew.airride.data.DemoVehicleSource
 
 /**
@@ -37,6 +38,37 @@ class CabinController(
             )
         }.onFailure {
             Log.w(TAG, "setHvacRecirculation threw", it)
+            onResult(false)
+        }
+    }
+
+    /**
+     * A-05 "뒷좌석 바람 조절": set the rear-left HVAC zone to a gentle fan speed (min + 1).
+     * Capability is checked first; unsupported → demo (UI only).
+     */
+    fun softenRearFan(onResult: (appliedToVehicle: Boolean) -> Unit = {}) {
+        val v = vehicle ?: return onResult(false)
+        runCatching {
+            val hvac = v.getHVAC()
+            hvac.checkHvacFanSpeedCapabilities(
+                { bounds: Map<SeatArea, ai.pleos.playground.vehicle.api.model.capability.AreaBounds<Int>> ->
+                    val entry = bounds.entries.firstOrNull { SeatValue.ROW_2_LEFT in it.key.values }
+                        ?: bounds.entries.firstOrNull()
+                    if (entry == null) {
+                        onResult(false)
+                    } else {
+                        val target = (entry.value.minValue + 1).coerceAtMost(entry.value.maxValue)
+                        hvac.setHvacFanSpeed(
+                            entry.key, target,
+                            { _, _ -> onResult(true) },
+                            { e -> Log.w(TAG, "setHvacFanSpeed failed", e); onResult(false) },
+                        )
+                    }
+                },
+                { e: Exception -> Log.w(TAG, "fan capability failed", e); onResult(false) },
+            )
+        }.onFailure {
+            Log.w(TAG, "softenRearFan threw", it)
             onResult(false)
         }
     }
