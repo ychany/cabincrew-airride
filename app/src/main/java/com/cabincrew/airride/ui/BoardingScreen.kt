@@ -127,12 +127,12 @@ fun BoardingCareScreen(
 ) {
     ParkedFrame(
         seat = SeatState.ACTIVE,
-        caption = { Text("뒷좌석 왼쪽 · ${passenger.name}", color = AirColors.Passenger, fontSize = 24.sp) },
+        caption = {},
     ) {
         Column(Modifier.widthIn(max = 1132.dp), verticalArrangement = Arrangement.spacedBy(36.dp)) {
             Heading("${passenger.name}님을 위해 이렇게 케어할게요", "이번 주행에 사용할 항목을 선택해 주세요.")
             Column(Modifier.fillMaxWidth().background(AirColors.Card, RoundedCornerShape(32.dp))) {
-                ToggleRow("뒷좌석 바람 조절", "커브 구간에서 뒷좌석 바람을 부드럽게 조절해요", care.rearFan) { onCare(care.copy(rearFan = it)) }
+                ToggleRow("뒷좌석 바람 조절", "시작하면 바람을 부드럽게 조절해요", care.rearFan) { onCare(care.copy(rearFan = it)) }
                 Box(Modifier.fillMaxWidth().height(2.dp).background(AirColors.Divider))
                 ToggleRow("커브 전 음성 안내", "커브에 진입하기 전 운전자에게 알려드려요", care.curveVoice) { onCare(care.copy(curveVoice = it)) }
             }
