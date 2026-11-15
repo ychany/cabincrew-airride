@@ -1,6 +1,9 @@
 package com.cabincrew.airride.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.cabincrew.airride.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,10 +80,15 @@ private fun ReportSummary(report: TripReport, fmt: SimpleDateFormat, minutes: Lo
         if (passengerName != null) "${withParticle(passengerName)} 함께한 주행을 마쳤어요" else "주행을 마쳤어요",
         color = AirColors.Text, fontSize = 52.sp, fontWeight = FontWeight.Bold,
     )
-    Text(
-        "출발 ${fmt.format(Date(report.startMillis))} → 도착 ${fmt.format(Date(report.endMillis))} · ${minutes}분",
-        color = AirColors.TextMuted, fontSize = 28.sp,
-    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
+            Image(painterResource(R.drawable.ic_car), contentDescription = null, modifier = Modifier.size(36.dp))
+        }
+        Text(
+            "출발 ${fmt.format(Date(report.startMillis))} → 도착 ${fmt.format(Date(report.endMillis))} · ${minutes}분",
+            color = Color.White, fontSize = 28.sp,
+        )
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         StatCard("부드러운 주행", "${report.smoothnessScore}", Modifier.weight(1f))
         StatCard("케어 적용", "${report.careCount}회", Modifier.weight(1f))
