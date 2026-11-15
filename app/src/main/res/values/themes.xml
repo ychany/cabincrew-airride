@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.AirRide" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/airride_bg</item>
+        <item name="android:statusBarColor">@color/airride_bg</item>
+        <item name="android:navigationBarColor">@color/airride_bg</item>
+    </style>
+</resources>
