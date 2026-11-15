@@ -30,6 +30,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +53,12 @@ import com.cabincrew.airride.R
 
 /** Parked wide layout: cabin top view on the left, content on the right (A-01, A-02, A-09). */
 @Composable
-fun ParkedFrame(seat: SeatState, caption: @Composable () -> Unit, content: @Composable () -> Unit) {
+fun ParkedFrame(
+    seat: SeatState,
+    caption: @Composable () -> Unit,
+    left: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
         val compact = maxWidth < 1300.dp
         Row(
@@ -50,7 +70,7 @@ fun ParkedFrame(seat: SeatState, caption: @Composable () -> Unit, content: @Comp
             horizontalArrangement = Arrangement.spacedBy(64.dp),
         ) {
             if (!compact) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
+                if (left != null) left() else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
                     CabinTopView(seat)
                     caption()
                 }
@@ -63,6 +83,14 @@ fun ParkedFrame(seat: SeatState, caption: @Composable () -> Unit, content: @Comp
 /** A-01 탑승 확인 */
 @Composable
 fun BoardingWhoScreen(onChoose: (Passenger?) -> Unit) {
+    // A-01 → selected state (magenta border + glow) for a moment, then A-02.
+    var selected by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    fun pick(key: String, action: () -> Unit) {
+        if (selected != null) return
+        selected = key
+        scope.launch { delay(350); action() }
+    }
     ParkedFrame(
         seat = SeatState.PENDING,
         caption = { Text("뒷좌석 왼쪽", color = AirColors.Passenger, fontSize = 24.sp) },
@@ -78,7 +106,7 @@ fun BoardingWhoScreen(onChoose: (Passenger?) -> Unit) {
                     tiles.chunked(perRow).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                             row.forEach { (label, v) ->
-                                PassengerTile(label, v.first, Modifier.weight(1f).aspectRatio(1f), v.second)
+                                PassengerTile(label, v.first, Modifier.weight(1f).aspectRatio(1f), selected = selected == label) { pick(label, v.second) }
                             }
                         }
                     }
@@ -89,9 +117,11 @@ fun BoardingWhoScreen(onChoose: (Passenger?) -> Unit) {
 }
 
 @Composable
-private fun PassengerTile(label: String, photo: Int?, modifier: Modifier, onClick: () -> Unit) {
+private fun PassengerTile(label: String, photo: Int?, modifier: Modifier, selected: Boolean = false, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(15.dp)
     Box(
-        modifier.clip(RoundedCornerShape(15.dp)).background(AirColors.Card).clickableNoRipple(onClick),
+        modifier.clip(shape).background(AirColors.Card).clickableNoRipple(onClick)
+            .then(if (selected) Modifier.border(1.5.dp, AirColors.Passenger, shape) else Modifier),
     ) {
         if (photo != null) {
             Image(painterResource(photo), contentDescription = label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -113,6 +143,46 @@ private fun PassengerTile(label: String, photo: Int?, modifier: Modifier, onClic
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
         )
+        if (selected) {
+            // Inner glow (Figma: inset 0 0 14.8 rgba(240,147,255,0.52)).
+            Box(
+                Modifier.fillMaxSize().drawBehind {
+                    drawRoundRect(
+                        Color(0x85F093FF), cornerRadius = CornerRadius(15.dp.toPx()),
+                        style = Stroke(10.dp.toPx()),
+                        alpha = 0.6f,
+                    )
+                }.blur(8.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+/** A-02 left column: selected passenger photo, profile tags and recent note. */
+@Composable
+private fun PassengerProfile(passenger: Passenger) {
+    Column(Modifier.width(284.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+        PassengerTile(passenger.name, passenger.photo, Modifier.size(284.dp), selected = true) {}
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (passenger.motionSensitive) {
+                    Row(
+                        Modifier.height(48.dp).background(Color(0x2EFF9F43), RoundedCornerShape(24.dp)).padding(horizontal = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(Modifier.size(10.dp).background(AirColors.Warn, CircleShape))
+                        Text("멀미 민감", color = Color(0xFFFFB877), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                passenger.tags.forEach { tag ->
+                    Box(Modifier.height(48.dp).background(AirColors.Card, RoundedCornerShape(24.dp)).padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
+                        Text(tag, color = Color(0xFFD5D7DB), fontSize = 22.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+            passenger.note?.let { Text(it, color = AirColors.TextMuted, fontSize = 22.sp, lineHeight = 32.sp) }
+        }
     }
 }
 
@@ -128,6 +198,7 @@ fun BoardingCareScreen(
     ParkedFrame(
         seat = SeatState.ACTIVE,
         caption = {},
+        left = { PassengerProfile(passenger) },
     ) {
         Column(Modifier.widthIn(max = 1132.dp), verticalArrangement = Arrangement.spacedBy(36.dp)) {
             Heading("${passenger.name}님을 위해 이렇게 케어할게요", "이번 주행에 사용할 항목을 선택해 주세요.")

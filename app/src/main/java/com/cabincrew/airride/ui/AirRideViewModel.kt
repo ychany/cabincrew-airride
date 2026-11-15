@@ -32,11 +32,18 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Sample passenger profiles (A-01). Names/photos are demo data from the design. */
-data class Passenger(val name: String, @DrawableRes val photo: Int?, val motionSensitive: Boolean)
+data class Passenger(
+    val name: String,
+    @DrawableRes val photo: Int?,
+    val motionSensitive: Boolean,
+    /** Profile tags shown in A-02 (demo profile data). */
+    val tags: List<String> = listOf("뒷좌석 왼쪽"),
+    val note: String? = null,
+)
 
 val SAMPLE_PASSENGERS = listOf(
-    Passenger("민준", R.drawable.passenger_minjun, motionSensitive = true),
-    Passenger("서아", R.drawable.passenger_seoa, motionSensitive = false),
+    Passenger("민준", R.drawable.passenger_minjun, motionSensitive = true, tags = listOf("뒷좌석 왼쪽", "시원한 바람 선호"), note = "최근 3번 주행 중 2번 멀미"),
+    Passenger("서아", R.drawable.passenger_seoa, motionSensitive = false, tags = listOf("뒷좌석 왼쪽", "약한 바람 선호"), note = "최근 주행에서 멀미 없음"),
     Passenger("동승자", null, motionSensitive = false),
 )
 
