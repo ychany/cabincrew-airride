@@ -47,6 +47,6 @@ object VehicleConnector {
 
         val area = areas.first()
         Log.i(TAG, "Pleos Vehicle connected, HVAC area=$area")
-        return Result(PleosVehicleSource(vehicle, demo, scope, area), vehicle, area)
+        return Result(PleosVehicleSource(vehicle, demo, scope, area, CarSpeedMonitor(context)), vehicle, area)
     }
 }

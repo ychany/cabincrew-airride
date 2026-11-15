@@ -26,14 +26,15 @@ import kotlin.math.sign
  * Overlays real Pleos Vehicle SDK signals on top of the demo source.
  *
  * From the SDK: gear (driving / parked), HVAC recirculation state, steering wheel angle.
- * Not exposed by the Vehicle SDK (speed, acceleration, curve, lane warning, occupants)
- * stay on the demo values — README에 명시.
+ * Speed / acceleration change: AAOS PERF_VEHICLE_SPEED via [CarSpeedMonitor].
+ * Not available on the emulator (curve, lane warning, occupants) stay on the demo values — README에 명시.
  */
 class PleosVehicleSource(
     private val vehicle: Vehicle,
     private val base: DemoVehicleSource,
     private val scope: CoroutineScope,
     val hvacArea: SeatArea,
+    private val speed: CarSpeedMonitor? = null,
 ) : VehicleSignalSource {
 
     private val demoOverride = MutableStateFlow(false)
@@ -53,10 +54,12 @@ class PleosVehicleSource(
     private val live = MutableStateFlow(Live())
 
     override val signals: StateFlow<VehicleSignals> =
-        combine(base.signals, live, demoOverride) { demo, l, override ->
+        combine(base.signals, live, demoOverride, speed?.motion ?: MutableStateFlow(null)) { demo, l, override, m ->
             if (override) return@combine demo
             demo.copy(
                 isDriving = l.driving ?: demo.isDriving,
+                speedKmh = m?.speedKmh ?: demo.speedKmh,
+                accelChange = m?.accelChange ?: demo.accelChange,
                 recirculationOn = l.recirc ?: demo.recirculationOn,
                 steeringCorrectionsPerMin = l.correctionsPerMin ?: demo.steeringCorrectionsPerMin,
             )
@@ -110,6 +113,7 @@ class PleosVehicleSource(
     }
 
     override fun start() {
+        speed?.start()
         runCatching { vehicle.getGear().registerGearSelection(gearListener) }
             .onFailure { Log.w(TAG, "gear listener unavailable", it) }
         runCatching { vehicle.getHVAC().registerHvacRecirculationState(hvacArea, recircListener) }
@@ -143,6 +147,7 @@ class PleosVehicleSource(
 
     override fun stop() {
         ticker?.cancel()
+        speed?.stop()
         runCatching { vehicle.getGear().unregisterGearSelection(gearListener) }
         runCatching { vehicle.getHVAC().unregisterHvacRecirculationState(hvacArea, recircListener) }
         runCatching { vehicle.getSteeringWheel().unregisterSteeringWheelAngle(steeringListener) }

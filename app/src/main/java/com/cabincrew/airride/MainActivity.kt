@@ -17,12 +17,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Heads-up suggestions over the navigation map need notification permission (API 33+).
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-        }
+        // Vehicle speed (CAR_SPEED) is a runtime permission on AAOS.
+        val needed = buildList {
+            if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+            add(CAR_SPEED)
+        }.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (needed.isNotEmpty()) requestPermissions(needed.toTypedArray(), 1)
         setContent { AirRideApp(vm) }
+    }
+
+    private companion object {
+        const val CAR_SPEED = "android.car.permission.CAR_SPEED"
     }
 
     override fun onStart() {

@@ -11,6 +11,9 @@
     <!-- Gear selection + steering wheel angle (SDK @RequiresCustomPermission). -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
 
+    <!-- Vehicle speed (AAOS PERF_VEHICLE_SPEED) → acceleration change for the motion-sickness index. -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+
     <!-- Heads-up suggestion over the navigation map (A-06 / A-08). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
