@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.painterResource
+import com.cabincrew.airride.R
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,7 +42,7 @@ fun HomeScreen(
     onDismiss: () -> Unit,
     onOpenDemo: () -> Unit,
     onEndTrip: () -> Unit,
-    onMotionSensitive: (Boolean) -> Unit,
+    onCare: (CareOptions) -> Unit,
 ) {
     Row(Modifier.fillMaxSize().background(AirColors.Bg).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
         // Cabin side
@@ -48,9 +51,12 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            CabinTopView()
+            CabinTopView(if (state.passenger != null) SeatState.ACTIVE else SeatState.EMPTY)
             Spacer(Modifier.height(32.dp))
-            Text("뒷좌석 왼쪽 · 동승자", color = AirColors.TextSub, fontSize = 26.sp)
+            Text(
+                if (state.passenger != null) "뒷좌석 왼쪽 · ${state.passengerName}" else "운전자 단독 주행",
+                color = if (state.passenger != null) AirColors.Passenger else AirColors.TextSub, fontSize = 26.sp,
+            )
             Spacer(Modifier.height(16.dp))
             StatusChip(
                 if (state.signals.recirculationOn) "내기순환" else "외기 유입",
@@ -64,11 +70,15 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             Header(state, onOpenDemo)
-            Gauges(state)
-            when {
-                state.appliedMessage != null -> AppliedCard(state.appliedMessage)
-                state.suggestion != null -> SuggestionFor(state, state.suggestion, onAccept, onDismiss)
-                !state.restricted -> ParkedExtras(state, onEndTrip, onMotionSensitive)
+            if (state.suggestion == Suggestion.CurveAhead) {
+                CurveGuide(state)
+            } else {
+                Gauges(state)
+                when {
+                    state.appliedMessage != null -> AppliedCard(state.appliedMessage)
+                    state.suggestion != null -> SuggestionFor(state, state.suggestion, onAccept, onDismiss)
+                    !state.restricted -> ParkedExtras(state, onEndTrip, onCare)
+                }
             }
         }
     }
@@ -113,14 +123,48 @@ private fun Gauges(state: UiState) {
         levelColor = AirColors.Driver,
         detail = "연속 주행 ${if (drive >= 60) "${drive / 60}시간 ${drive % 60}분" else "${drive}분"}",
     )
+    if (state.passenger != null) PassengerGauge(state)
+}
+
+@Composable
+private fun PassengerGauge(state: UiState, detail: String? = null) {
+    val c = state.condition
+    val good = c.motionLevel == Level.GOOD
     ConditionGauge(
-        label = "동승자 멀미",
+        label = "${state.passengerName} 멀미",
         status = when (c.motionLevel) { Level.GOOD -> "편안함"; Level.CAUTION -> "주의"; Level.DANGER -> "높음" },
-        statusColor = if (c.motionLevel == Level.GOOD) AirColors.Passenger else AirColors.Warn,
+        statusColor = if (good) AirColors.Passenger else AirColors.Warn,
         level = c.motionSickness / 100f,
-        levelColor = AirColors.Passenger,
-        detail = if (state.profile.motionSensitive) "뒷좌석 왼쪽 · 멀미 민감" else "뒷좌석 왼쪽",
+        levelColor = if (good) AirColors.Passenger else AirColors.Warn,
+        detail = detail ?: if (state.profile.motionSensitive) "뒷좌석 왼쪽 · 멀미 민감" else "뒷좌석 왼쪽",
     )
+}
+
+/** A-05 커브 대응 — voice guide card, passenger gauge, rear airflow chip. No buttons while driving. */
+@Composable
+private fun CurveGuide(state: UiState) {
+    Row(
+        Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(48.dp))
+            .background(AirColors.Card, RoundedCornerShape(48.dp)).padding(32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(Modifier.size(100.dp), contentAlignment = Alignment.Center) {
+            Image(painterResource(R.drawable.ic_voice), contentDescription = null, modifier = Modifier.size(56.dp))
+        }
+        Text("곧 커브예요\n급가속과 급제동을 줄여주세요", color = AirColors.Text, fontSize = 36.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold)
+    }
+    PassengerGauge(state, detail = "뒷좌석 왼쪽 · 커브 구간")
+    if (state.rearFanActive) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(painterResource(R.drawable.ic_wind_4step), contentDescription = null, modifier = Modifier.size(48.dp))
+            Text("뒷좌석 바람 조절 중", color = AirColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable
@@ -128,27 +172,30 @@ private fun SuggestionFor(state: UiState, s: Suggestion, onAccept: () -> Unit, o
     val c = state.condition
     when (s) {
         Suggestion.FreshAir -> {
-            SuggestionCard("외기로 바꿀까요?", "내기순환이 오래 유지됐어요", "바꾸기", onAccept, "지금은 유지", onDismiss)
+            SuggestionCard(
+                "바깥 공기를 들일까요?",
+                "내기순환이 ${state.signals.recircMinutes.toInt()}분째예요. 답답한 공기는 졸음을 불러요",
+                "외기로 전환", onAccept, "지금은 유지", onDismiss,
+            )
             Hint("추정 CO₂ ${c.estimatedCo2Ppm}ppm · 탑승 ${state.signals.occupants}명")
         }
         is Suggestion.Rest -> {
             SuggestionCard(
                 "${s.restAreaName}에서 쉬어 갈까요?",
-                reasonText(c),
+                reasonText(state),
                 "경유지 추가", onAccept, "나중에", onDismiss,
             )
             Hint("약 ${s.distanceKm}km 앞 · 경로상 위치")
         }
-        Suggestion.CurveAhead -> {
-            SuggestionCard("곧 커브예요", "뒷자리를 위해 부드럽게 돌아가요", "알겠어요", onAccept, "닫기", onDismiss)
-            Hint("동승자 멀미 ${c.motionSickness} · 전방 커브 구간")
-        }
+        Suggestion.CurveAhead -> Unit
     }
 }
 
-private fun reasonText(c: com.cabincrew.airride.engine.Condition): String {
+private fun reasonText(state: UiState): String {
+    val c = state.condition
     val a = if (c.alertnessLevel == Level.GOOD) "운전자 각성 좋음" else "운전자 각성 낮음"
-    val m = if (c.motionLevel == Level.GOOD) "동승자 편안함" else "동승자 멀미 높음"
+    if (state.passenger == null) return a
+    val m = if (c.motionLevel == Level.GOOD) "${state.passengerName} 편안함" else "${state.passengerName} 멀미 높음"
     return "$a · $m"
 }
 
@@ -170,35 +217,18 @@ private fun AppliedCard(msg: String) {
     }
 }
 
-/** Parked (P) only: passenger profile (Care Row) + report entry. */
+/** Parked (P) only: care options + report entry. */
 @Composable
-private fun ParkedExtras(state: UiState, onEndTrip: () -> Unit, onMotionSensitive: (Boolean) -> Unit) {
+private fun ParkedExtras(state: UiState, onEndTrip: () -> Unit, onCare: (CareOptions) -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        CareRow(
-            title = "멀미가 잦은 동승자",
-            sub = "커브·가감속에 더 일찍 반응해요",
-            checked = state.profile.motionSensitive,
-            onChecked = onMotionSensitive,
-        )
-        Spacer(Modifier.height(28.dp))
-        IviButton("주행 종료 리포트", onEndTrip, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
-    }
-}
-
-/** AirRide/Care Row */
-@Composable
-private fun CareRow(title: String, sub: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, color = AirColors.Text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Text(sub, color = AirColors.TextMuted, fontSize = 24.sp)
+        if (state.passenger != null) {
+            Column(Modifier.fillMaxWidth().background(AirColors.Card, RoundedCornerShape(32.dp))) {
+                ToggleRow("뒷좌석 바람 조절", "커브 구간 자동 적용", state.care.rearFan) { onCare(state.care.copy(rearFan = it)) }
+                Box(Modifier.fillMaxWidth().height(2.dp).background(AirColors.Divider))
+                ToggleRow("커브 전 음성 안내", "운전자에게 미리 알려요", state.care.curveVoice) { onCare(state.care.copy(curveVoice = it)) }
             }
-            Switch(
-                checked = checked, onCheckedChange = onChecked,
-                colors = SwitchDefaults.colors(checkedTrackColor = AirColors.Ok, checkedThumbColor = Color.White),
-            )
+            Spacer(Modifier.height(28.dp))
         }
-        Box(Modifier.fillMaxWidth().height(2.dp).background(AirColors.Divider))
+        IviButton("주행 종료 리포트", onEndTrip, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
     }
 }

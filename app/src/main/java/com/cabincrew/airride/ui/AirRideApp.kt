@@ -21,13 +21,19 @@ fun AirRideApp(vm: AirRideViewModel = viewModel()) {
                 state.connecting -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 // Report detail is parked-only.
                 report != null && !state.restricted -> ReportScreen(report, vm::closeReport)
+                // Boarding / rest-stop flows are parked-only screens.
+                state.phase == Phase.BOARDING_WHO && !state.restricted -> BoardingWhoScreen(vm::choosePassenger)
+                state.phase == Phase.BOARDING_CARE && !state.restricted -> state.pendingPassenger?.let { p ->
+                    BoardingCareScreen(p, state.care, vm::setCare, vm::backToWho, vm::startCare)
+                }
+                state.phase == Phase.REST_STOP && !state.restricted -> RestStopScreen(state, vm::ventilate, vm::finishRest)
                 else -> HomeScreen(
                     state = state,
                     onAccept = vm::acceptSuggestion,
                     onDismiss = vm::dismissSuggestion,
                     onOpenDemo = { vm.toggleDemoPanel(true) },
                     onEndTrip = vm::endTrip,
-                    onMotionSensitive = vm::setMotionSensitive,
+                    onCare = vm::setCare,
                 )
             }
             if (state.demoPanelOpen) {
