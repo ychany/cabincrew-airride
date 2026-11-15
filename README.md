@@ -169,3 +169,4 @@ app/src/main/java/com/cabincrew/airride/
 apk/         CabinCrew_AirRide_release.apk
 scripts/     build-release.sh, setup-emulator-demo.sh
 ```
+
