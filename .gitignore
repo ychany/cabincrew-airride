@@ -28,5 +28,3 @@ keystore.properties
 # Local Claude settings
 .claude/settings.local.json
 
-# Recorded demo videos (shared separately)
-demo-videos/
