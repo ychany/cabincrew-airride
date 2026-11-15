@@ -151,7 +151,13 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun recompute(s: VehicleSignals) {
-        _state.update { st ->
+        _state.update { st0 ->
+            // Boarding screens are parked-only. If the car is already driving (e.g. the app was opened
+            // while driving), skip boarding: keep a chosen passenger, otherwise driver-only care.
+            val driving = if (source.isDemo) s.isDriving else restriction.restricted.value ?: s.isDriving
+            val st = if (driving && (st0.phase == Phase.BOARDING_WHO || st0.phase == Phase.BOARDING_CARE)) {
+                st0.copy(phase = Phase.MAIN, passenger = if (st0.phase == Phase.BOARDING_CARE) st0.pendingPassenger else st0.passenger)
+            } else st0
             val c = ConditionEngine.evaluate(s, st.profile)
             val suggestion = if (st.phase == Phase.MAIN && s.isDriving) {
                 SuggestionPolicy.decide(c, s, dismissed)
@@ -413,6 +419,8 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         dismissed.clear()
         if (!scenario.signals.curveAhead) onCurveEnded()
         demo.apply(scenario)
+        // Re-pressing the same scenario emits no new signals → recompute so a dismissed card comes back.
+        recompute(source.signals.value)
     }
 
     fun updateDemo(transform: (VehicleSignals) -> VehicleSignals) {
