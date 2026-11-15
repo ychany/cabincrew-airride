@@ -46,13 +46,17 @@ adb install -r apk/CabinCrew_AirRide_release.apk
 
 ### 3. 시나리오 재현 순서
 
-| # | 데모 패널 조작 | 기대 화면 |
+앱을 실행하면 정차 상태에서 **탑승 확인(A-01)** 화면이 먼저 나옵니다.
+
+| # | 조작 | 기대 화면 |
 |---|---|---|
-| 1 | `평온한 주행` | 운전자 각성 **좋음** / 동승자 멀미 **편안함**, 제안 카드 없음 |
-| 2 | `답답한 실내 (내기순환 오래)` | 각성 **보통**, 칩 `환기 필요` → **"외기로 바꿀까요?"** → [바꾸기] → 적용 완료, 캐빈 칩이 `외기 유입`으로 변경 (차량 연결 시 실제 HVAC 제어) |
-| 3 | `졸음 위험` | 각성 **낮음**, 칩 `휴식 권장` → **"○○휴게소에서 쉬어 갈까요?"** → [경유지 추가] |
-| 4 | `멀미 위험 (커브 구간)` | 멀미 **높음**, 칩 `커브 대비` → **"곧 커브예요"** 안내 |
-| 5 | `정차 (P)` | 동승자 설정(멀미 민감) + [주행 종료 리포트] → 부드러움 점수, 외기 전환 횟수, 구간별 컨디션 그래프, 케어 기록 |
+| 1 | 동승자 `민준` 선택 → 케어 항목(뒷좌석 바람 조절 / 커브 전 음성 안내) 선택 → [케어 시작] | **A-01 탑승 확인 → A-02 동승 모드** → 홈 |
+| 2 | 데모 패널 `평온한 주행` | 운전자 각성 **좋음** / 민준 멀미 **편안함**, 제안 없음 |
+| 3 | 데모 패널 `답답한 실내 (내기순환 오래)` | **A-06** "바깥 공기를 들일까요?" → [외기로 전환] → 적용 완료, 캐빈 칩 `외기 유입` (차량 연결 시 실제 HVAC 내기순환 OFF) |
+| 4 | 데모 패널 `멀미 위험 (커브 구간)` | **A-05** "곧 커브예요 / 급가속과 급제동을 줄여주세요" 음성 안내 카드 + 멀미 게이지 + `뒷좌석 바람 조절 중` (차량 연결 시 실제 HVAC 풍량 조절, 음성 안내는 TTS) |
+| 5 | 데모 패널 `졸음 위험` | **A-08** "○○휴게소에서 쉬어 갈까요?" → [경유지 추가] |
+| 6 | 데모 패널 `정차 (P)` | **A-09 휴게소 도착**: 정차 확인 → [환기하기] → 쉰 뒤 상태 확인 → [다시 출발하기] |
+| 7 | 정차 홈에서 [주행 종료 리포트] | **A-10**: 부드러움 점수, 외기 전환 횟수, 차가 대신한 케어, 구간별 컨디션 그래프(실제 기록), 케어 기록 |
 
 ## 테스트 환경 및 설정
 
@@ -74,7 +78,7 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | 권한 | 용도 |
 |---|---|
 | `pleos.car.permission.CAR_CLIMATE` | HVAC 내기순환 상태 조회·구독 |
-| `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`) |
+| `pleos.car.permission.CONTROL_CAR_CLIMATE` | 외기 전환 (`setHvacRecirculation`), 뒷좌석 바람 조절 (`setHvacFanSpeed`) |
 | `pleos.car.permission.CAR_DRIVE` | 기어 상태(P/D) → 주행/정차 판단, 조향각 → 미세 보정 빈도 |
 
 ### 소스에서 빌드
@@ -89,9 +93,11 @@ Pleos Vehicle 권한은 실행 중 승인 창 없이 Manifest 선언만으로 �
 | SDK | API | 사용처 |
 |---|---|---|
 | Vehicle – HVAC | `checkHvacRecirculationCapabilities`, `getHvacRecirculationState`, `registerHvacRecirculationState`, `setHvacRecirculation` | 내기순환 지속 시간 → 추정 CO₂, 외기 전환 |
+| Vehicle – HVAC | `checkHvacFanSpeedCapabilities`, `setHvacFanSpeed` | 커브 구간 뒷좌석 바람 조절 |
 | Vehicle – Gear | `registerGearSelection` | 주행/정차 |
 | Vehicle – SteeringWheel | `registerSteeringWheelAngle` | 조향 미세 보정 빈도 |
 | AAOS | `CarUxRestrictionsManager` | 주행 중 UI 제한 |
+| Android | `TextToSpeech` | 커브 전 음성 안내 |
 
 ## 주행 안전
 
@@ -108,6 +114,8 @@ app/src/main/java/com/cabincrew/airride/
   engine/    ConditionEngine (각성·멀미 지수), SuggestionPolicy
   control/   CabinController (HVAC 제어), DrivingRestriction (CarUxRestrictions)
   report/    TripRecorder (케어 기록 → 주행 종료 리포트)
-  ui/        HomeScreen, SuggestionCard, ReportScreen, DemoPanel, AirRideViewModel
+  control/   VoiceGuide (TTS)
+  ui/        BoardingScreen (A-01·A-02), HomeScreen (A-03~A-08), RestStopScreen (A-09),
+             ReportScreen (A-10), CabinTopView, Components, DemoPanel, AirRideViewModel
 apk/         CabinCrew_AirRide_release.apk
 ```
