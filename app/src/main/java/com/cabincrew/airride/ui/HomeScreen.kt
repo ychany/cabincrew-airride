@@ -174,24 +174,11 @@ private fun CurveGuide(state: UiState) {
 
 @Composable
 private fun SuggestionFor(state: UiState, s: Suggestion, onAccept: () -> Unit, onDismiss: () -> Unit) {
-    val c = state.condition
+    val copy = suggestionCopy(s, state) ?: return
+    SuggestionCard(copy.title, copy.body, copy.primary, onAccept, copy.secondary, onDismiss)
     when (s) {
-        Suggestion.FreshAir -> {
-            SuggestionCard(
-                "바깥 공기를 들일까요?",
-                "내기순환이 ${state.signals.recircMinutes.toInt()}분째예요. 답답한 공기는 졸음을 불러요",
-                "외기로 전환", onAccept, "지금은 유지", onDismiss,
-            )
-            Hint("추정 CO₂ ${c.estimatedCo2Ppm}ppm · 탑승 ${state.signals.occupants}명")
-        }
-        is Suggestion.Rest -> {
-            SuggestionCard(
-                "${s.restAreaName}에서 쉬어 갈까요?",
-                reasonText(state),
-                "경유지 추가", onAccept, "나중에", onDismiss,
-            )
-            Hint("약 ${s.distanceKm}km 앞 · 경로상 위치")
-        }
+        Suggestion.FreshAir -> Hint("추정 CO₂ ${state.condition.estimatedCo2Ppm}ppm · 탑승 ${state.signals.occupants}명")
+        is Suggestion.Rest -> Hint(reasonText(state))
         Suggestion.CurveAhead -> Unit
     }
 }

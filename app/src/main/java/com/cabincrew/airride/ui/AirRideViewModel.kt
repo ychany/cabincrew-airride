@@ -17,6 +17,8 @@ import com.cabincrew.airride.engine.ConditionEngine
 import com.cabincrew.airride.engine.PassengerProfile
 import com.cabincrew.airride.engine.Suggestion
 import com.cabincrew.airride.engine.SuggestionPolicy
+import com.cabincrew.airride.notify.SuggestionNotifier
+import android.widget.Toast
 import com.cabincrew.airride.report.CareType
 import com.cabincrew.airride.report.TripRecorder
 import com.cabincrew.airride.report.TripReport
@@ -64,6 +66,8 @@ data class UiState(
     val restStep: RestStep = RestStep.VENTILATE,
     val report: TripReport? = null,
     val demoPanelOpen: Boolean = false,
+    /** AirRide is on screen (full or split). Off-screen suggestions go to a heads-up notification. */
+    val visible: Boolean = true,
 ) {
     val profile get() = PassengerProfile(motionSensitive = passenger?.motionSensitive == true)
     val passengerName get() = passenger?.name ?: "동승자"
@@ -75,6 +79,9 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private val recorder = TripRecorder()
     private val restriction = DrivingRestriction(app)
     private val voice = VoiceGuide(app)
+    private val notifier = SuggestionNotifier(app)
+    private var notified: Suggestion? = null
+    private val prefs = app.getSharedPreferences("airride", android.content.Context.MODE_PRIVATE)
 
     private var source: VehicleSignalSource = demo
     private var controller = CabinController(null, null, demo)
@@ -82,7 +89,9 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     private var curveHandled = false
     private var restPending: String? = null
 
-    private val _state = MutableStateFlow(UiState())
+    private val _state = MutableStateFlow(
+        UiState(care = CareOptions(prefs.getBoolean("rearFan", true), prefs.getBoolean("curveVoice", false)))
+    )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
@@ -94,6 +103,8 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(connecting = false, demoMode = source.isDemo) }
             launch { source.signals.collect { recompute(it) } }
             launch { restriction.restricted.collect { recompute(source.signals.value) } }
+            // Buttons on the heads-up notification (A-06 / A-08 over the map).
+            launch { SuggestionNotifier.actionFlow.collect { accept -> if (accept) acceptSuggestion() else dismissSuggestion() } }
             // Sample condition for the report once per second.
             launch {
                 while (isActive) {
@@ -124,6 +135,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         val st = _state.value
+        syncNotification(st)
         if (st.suggestion == Suggestion.CurveAhead) onCurve() else if (!st.signals.curveAhead) curveHandled = false
         // Arrived at the rest area: parked after accepting the rest suggestion → A-09.
         val pending = restPending
@@ -131,6 +143,25 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
             restPending = null
             _state.update { it.copy(phase = Phase.REST_STOP, restAreaName = pending, restStep = RestStep.VENTILATE) }
         }
+    }
+
+    fun setVisible(visible: Boolean) {
+        _state.update { it.copy(visible = visible) }
+        syncNotification(_state.value)
+    }
+
+    /** Off-screen → post the suggestion as a heads-up card over the map; on-screen → in-app card only. */
+    private fun syncNotification(st: UiState) {
+        val s = st.suggestion
+        val copy = s?.let { suggestionCopy(it, st) }
+        if (st.visible || copy == null) {
+            if (notified != null) notifier.cancel()
+            notified = null
+            return
+        }
+        if (notified == s) return
+        notified = s
+        notifier.show(copy.title, copy.body, copy.primary, copy.secondary)
     }
 
     /** A-05: curve ahead → voice prompt + gentle rear airflow (no buttons while driving). */
@@ -141,11 +172,12 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         if (st.care.curveVoice) voice.speak("곧 커브예요. 급가속과 급제동을 줄여주세요")
         if (st.care.rearFan) {
             controller.softenRearFan { applied ->
-                recorder.record(CareType.CABIN_ADJUST, if (applied) "커브 구간 · 뒷좌석 바람 조절" else "커브 구간 · 뒷좌석 바람 조절 (데모)", automatic = true)
+                recorder.record(CareType.CURVE_GUIDE, if (applied) "커브 구간 · 뒷좌석 바람 조절" else "커브 구간 · 뒷좌석 바람 조절 (데모)", automatic = true)
             }
             _state.update { it.copy(rearFanActive = true) }
+        } else {
+            recorder.record(CareType.CURVE_GUIDE, "커브 구간 · 부드러운 주행 안내", automatic = true)
         }
-        recorder.record(CareType.CURVE_GUIDE, "커브 구간 · 부드러운 주행 안내", automatic = true)
     }
 
     // ---- A-01 / A-02 boarding ----
@@ -165,7 +197,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startCare() {
         val p = _state.value.pendingPassenger ?: return
-        recorder.record(CareType.CABIN_ADJUST, "${p.name} 동승 모드 시작")
+        recorder.record(CareType.SESSION, "${p.name} 동승 모드 시작")
         _state.update { it.copy(passenger = p, phase = Phase.MAIN) }
         recompute(source.signals.value)
     }
@@ -203,6 +235,8 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun showApplied(msg: String) {
+        // Over the map (A-07 / A-08-2): system toast at the bottom.
+        if (!_state.value.visible) Toast.makeText(getApplication(), msg, Toast.LENGTH_LONG).show()
         _state.update { it.copy(appliedMessage = msg) }
         viewModelScope.launch {
             delay(3_000)
@@ -234,6 +268,14 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
 
     fun endTrip() {
         _state.update { it.copy(report = recorder.buildReport()) }
+    }
+
+    /** A-10 "다음 여행에도 이 설정 쓰기" */
+    fun saveSettingsForNextTrip() {
+        val care = _state.value.care
+        prefs.edit().putBoolean("rearFan", care.rearFan).putBoolean("curveVoice", care.curveVoice).apply()
+        Toast.makeText(getApplication(), "다음 여행에도 이 설정을 쓸게요", Toast.LENGTH_SHORT).show()
+        closeReport()
     }
 
     fun closeReport() {
@@ -270,6 +312,7 @@ class AirRideViewModel(app: Application) : AndroidViewModel(app) {
         controller.release()
         restriction.release()
         voice.release()
+        notifier.cancel()
     }
 
     private companion object {
