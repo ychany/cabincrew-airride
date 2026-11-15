@@ -8,8 +8,8 @@
     <!-- Pleos Vehicle SDK: only the APIs AirRide uses. -->
     <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
     <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
-    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
-    <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
+    <!-- Gear selection + steering wheel angle (SDK @RequiresCustomPermission). -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
 
     <application
         android:allowBackup="false"
