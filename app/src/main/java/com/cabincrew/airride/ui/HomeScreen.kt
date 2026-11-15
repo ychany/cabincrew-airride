@@ -78,10 +78,11 @@ fun HomeScreen(
                 Modifier.weight(1f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(28.dp),
             ) {
-                Header(state, onOpenDemo)
-                if (state.suggestion == Suggestion.CurveAhead) {
-                    CurveGuide(state)
+                if (state.curveStage != null) {
+                    // A-05 has no header (Figma); long-press anywhere in the flow still opens the demo panel.
+                    CurveFlow(state, onOpenDemo)
                 } else {
+                    Header(state, onOpenDemo)
                     Gauges(state)
                     when {
                         state.appliedMessage != null -> AppliedCard(state.appliedMessage)
@@ -150,32 +151,6 @@ private fun PassengerGauge(state: UiState, detail: String? = null) {
     )
 }
 
-/** A-05 커브 대응 — voice guide card, passenger gauge, rear airflow chip. No buttons while driving. */
-@Composable
-private fun CurveGuide(state: UiState) {
-    Row(
-        Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(48.dp))
-            .background(AirColors.Card, RoundedCornerShape(48.dp)).padding(32.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Box(Modifier.size(100.dp), contentAlignment = Alignment.Center) {
-            Image(painterResource(R.drawable.ic_voice), contentDescription = null, modifier = Modifier.size(56.dp))
-        }
-        Text("곧 커브예요\n급가속과 급제동을 줄여주세요", color = AirColors.Text, fontSize = 36.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold)
-    }
-    PassengerGauge(state, detail = "뒷좌석 왼쪽 · 커브 구간")
-    if (state.rearFanActive) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(painterResource(R.drawable.ic_wind_4step), contentDescription = null, modifier = Modifier.size(48.dp))
-            Text("뒷좌석 바람 조절 중", color = AirColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
 
 @Composable
 private fun SuggestionFor(state: UiState, s: Suggestion, onAccept: () -> Unit, onDismiss: () -> Unit) {
