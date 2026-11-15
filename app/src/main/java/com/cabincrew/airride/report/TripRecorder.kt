@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class CareType(val label: String) {
+    SESSION("동승 모드"),
     FRESH_AIR("외기 전환"),
     REST("휴식 경유지"),
     CURVE_GUIDE("커브 안내"),
@@ -26,6 +27,7 @@ data class TripReport(
     val smoothnessScore: Int,
     val freshAirSwitches: Int,
     val careCount: Int,
+    val restCount: Int,
     val events: List<CareEvent>,
     val samples: List<ConditionSample>,
     val startMillis: Long,
@@ -61,7 +63,8 @@ class TripRecorder {
         return TripReport(
             smoothnessScore = (100 - avgMotion).coerceIn(0, 100),
             freshAirSwitches = list.count { it.type == CareType.FRESH_AIR },
-            careCount = list.size,
+            careCount = list.count { it.type != CareType.SESSION && it.type != CareType.REST },
+            restCount = list.count { it.type == CareType.REST },
             events = list,
             samples = samples.toList(),
             startMillis = startMillis,

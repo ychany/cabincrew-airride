@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -38,7 +39,7 @@ import java.util.Locale
 
 /** A-10 주행 종료 리포트 (parked only). */
 @Composable
-fun ReportScreen(report: TripReport, onClose: () -> Unit) {
+fun ReportScreen(report: TripReport, passengerName: String?, onSave: () -> Unit, onClose: () -> Unit) {
     val fmt = SimpleDateFormat("HH:mm", Locale.KOREA)
     val minutes = ((report.endMillis - report.startMillis) / 60_000).coerceAtLeast(1)
     BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
@@ -49,8 +50,8 @@ fun ReportScreen(report: TripReport, onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState()).padding(56.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            ReportSummary(report, fmt, minutes)
-            CareLog(report, fmt, onClose)
+            ReportSummary(report, fmt, minutes, passengerName)
+            CareLog(report, fmt, onSave, onClose)
         }
         return@BoxWithConstraints
     }
@@ -61,36 +62,35 @@ fun ReportScreen(report: TripReport, onClose: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(64.dp),
     ) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(28.dp)) {
-            ReportSummary(report, fmt, minutes)
+            ReportSummary(report, fmt, minutes, passengerName)
         }
         Column(Modifier.width(500.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            CareLog(report, fmt, onClose, Modifier.weight(1f))
+            CareLog(report, fmt, onSave, onClose, Modifier.weight(1f))
         }
     }
     }
 }
 
 @Composable
-private fun ReportSummary(report: TripReport, fmt: SimpleDateFormat, minutes: Long) {
-    StatusChip("주행 종료 리포트", AirColors.Ok)
+private fun ReportSummary(report: TripReport, fmt: SimpleDateFormat, minutes: Long, passengerName: String?) {
     Text(
-        if (report.smoothnessScore >= 70) "동승자가 멀미 없이 도착했어요" else "오늘은 조금 흔들렸어요",
+        if (passengerName != null) "${withParticle(passengerName)} 함께한 주행을 마쳤어요" else "주행을 마쳤어요",
         color = AirColors.Text, fontSize = 52.sp, fontWeight = FontWeight.Bold,
     )
     Text(
-        "${fmt.format(Date(report.startMillis))} → ${fmt.format(Date(report.endMillis))} · ${minutes}분",
+        "출발 ${fmt.format(Date(report.startMillis))} → 도착 ${fmt.format(Date(report.endMillis))} · ${minutes}분",
         color = AirColors.TextMuted, fontSize = 28.sp,
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        StatCard("부드러움 점수", "${report.smoothnessScore}", Modifier.weight(1f))
-        StatCard("외기 전환", "${report.freshAirSwitches}회", Modifier.weight(1f))
-        StatCard("차가 대신한 케어", "${report.careCount}회", Modifier.weight(1f))
+        StatCard("부드러운 주행", "${report.smoothnessScore}", Modifier.weight(1f))
+        StatCard("케어 적용", "${report.careCount}회", Modifier.weight(1f))
+        StatCard("휴식", "${report.restCount}회", Modifier.weight(1f))
     }
     ConditionChart(report)
 }
 
 @Composable
-private fun CareLog(report: TripReport, fmt: SimpleDateFormat, onClose: () -> Unit, listModifier: Modifier = Modifier) {
+private fun CareLog(report: TripReport, fmt: SimpleDateFormat, onSave: () -> Unit, onClose: () -> Unit, listModifier: Modifier = Modifier) {
     Text("차가 대신한 케어", color = AirColors.Text, fontSize = 34.sp, fontWeight = FontWeight.Bold)
     Column(listModifier) {
         if (report.events.isEmpty()) {
@@ -100,10 +100,12 @@ private fun CareLog(report: TripReport, fmt: SimpleDateFormat, onClose: () -> Un
             CareLogRow(fmt.format(Date(e.timeMillis)), e.detail, careColor(e.type))
         }
     }
-    IviButton("닫기", onClose, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
+    IviButton("다음 여행에도 이 설정 쓰기", onSave, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
+    IviButton("닫기", onClose, filled = false, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
 }
 
 private fun careColor(t: CareType) = when (t) {
+    CareType.SESSION -> AirColors.Ok
     CareType.FRESH_AIR -> AirColors.Ok
     CareType.CURVE_GUIDE -> AirColors.Warn
     CareType.REST -> AirColors.Driver
@@ -152,12 +154,32 @@ private fun ConditionChart(report: TripReport) {
             line(AirColors.Driver) { it.alertness }
             line(AirColors.Warn) { it.motionSickness }
         }
-        Row(Modifier.fillMaxWidth()) {
+        // Markers: 출발 · care events · 도착 (labels too close to the previous one are skipped).
+        BoxWithConstraints(Modifier.fillMaxWidth().height(32.dp)) {
+            val w = maxWidth
             Text("출발", color = AirColors.TextMuted, fontSize = 22.sp)
-            Spacer(Modifier.weight(1f))
-            Text("도착", color = AirColors.TextMuted, fontSize = 22.sp)
+            Text("도착", color = AirColors.TextMuted, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopEnd))
+            var last = 0.08f
+            report.events.filter { it.type != CareType.SESSION && it.timeMillis in t0..samples.last().timeMillis }.forEach { e ->
+                val f = (e.timeMillis - t0) / span
+                if (f - last >= 0.18f && f <= 0.82f) {
+                    last = f
+                    Text(
+                        markerLabel(e.type), color = AirColors.TextMuted, fontSize = 22.sp,
+                        modifier = Modifier.offset(x = w * f - 50.dp),
+                    )
+                }
+            }
         }
     }
+}
+
+private fun markerLabel(t: CareType) = when (t) {
+    CareType.CURVE_GUIDE -> "커브 · 뒷좌석 바람"
+    CareType.FRESH_AIR -> "외기 전환"
+    CareType.REST -> "휴게소"
+    CareType.CABIN_ADJUST -> "실내 조정"
+    CareType.SESSION -> ""
 }
 
 @Composable
