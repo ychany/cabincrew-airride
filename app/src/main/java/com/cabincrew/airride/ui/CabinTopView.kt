@@ -12,12 +12,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
-/** AirRide/Cabin Top View — driver seat (blue) and cared passenger seat (magenta, rear-left). */
+enum class SeatState { EMPTY, PENDING, ACTIVE }
+
+/** AirRide/Cabin Top View — driver seat (blue) and rear-left passenger seat (magenta; dashed while asking). */
 @Composable
-fun CabinTopView(modifier: Modifier = Modifier, passengerActive: Boolean = true) {
+fun CabinTopView(passenger: SeatState, modifier: Modifier = Modifier) {
     Box(
         modifier.size(280.dp, 540.dp)
             .background(Color(0xFF16171A), RoundedCornerShape(140.dp))
@@ -30,7 +36,11 @@ fun CabinTopView(modifier: Modifier = Modifier, passengerActive: Boolean = true)
                 Seat()
             }
             Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                if (passengerActive) Seat(border = AirColors.Passenger, fill = Color(0xFF2E1A33)) else Seat()
+                when (passenger) {
+                    SeatState.ACTIVE -> Seat(border = AirColors.Passenger, fill = Color(0xFF2E1A33))
+                    SeatState.PENDING -> Seat(border = AirColors.Passenger, fill = Color(0xFF26272C), dashed = true)
+                    SeatState.EMPTY -> Seat()
+                }
                 Seat()
             }
         }
@@ -38,8 +48,18 @@ fun CabinTopView(modifier: Modifier = Modifier, passengerActive: Boolean = true)
 }
 
 @Composable
-private fun Seat(border: Color? = null, fill: Color = Color(0xFF2A2B30)) {
+private fun Seat(border: Color? = null, fill: Color = Color(0xFF2A2B30), dashed: Boolean = false) {
     val shape = RoundedCornerShape(18.dp)
-    val base = Modifier.size(90.dp, 160.dp).background(fill, shape)
-    Box(if (border != null) base.border(4.dp, border, shape) else base)
+    var m = Modifier.size(90.dp, 160.dp).background(fill, shape)
+    if (border != null) {
+        m = if (dashed) {
+            m.drawBehind {
+                drawRoundRect(
+                    border, cornerRadius = CornerRadius(18.dp.toPx()),
+                    style = Stroke(4.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))),
+                )
+            }
+        } else m.border(4.dp, border, shape)
+    }
+    Box(m)
 }
