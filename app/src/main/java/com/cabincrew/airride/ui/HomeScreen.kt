@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,9 +45,12 @@ fun HomeScreen(
     onEndTrip: () -> Unit,
     onCare: (CareOptions) -> Unit,
 ) {
-    Row(Modifier.fillMaxSize().background(AirColors.Bg).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
+    // Split with navigation (A-04~A-08: 840dp app panel next to the map) → app column only.
+    val compact = maxWidth < 1300.dp
+    Row(Modifier.fillMaxSize().padding(if (compact) 0.dp else 20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
         // Cabin side
-        Column(
+        if (!compact) Column(
             Modifier.weight(1f).fillMaxHeight().background(AirColors.Panel, RoundedCornerShape(32.dp)).padding(40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -66,7 +70,7 @@ fun HomeScreen(
 
         // App column (840dp per design)
         Column(
-            Modifier.width(840.dp).fillMaxHeight().background(AirColors.Panel, RoundedCornerShape(32.dp)).padding(56.dp),
+            (if (compact) Modifier.fillMaxWidth() else Modifier.width(840.dp)).fillMaxHeight().background(AirColors.Panel, RoundedCornerShape(32.dp)).padding(56.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             Header(state, onOpenDemo)
@@ -81,6 +85,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
     }
 }
 

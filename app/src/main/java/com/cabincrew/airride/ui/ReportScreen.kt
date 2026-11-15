@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,42 +41,66 @@ import java.util.Locale
 fun ReportScreen(report: TripReport, onClose: () -> Unit) {
     val fmt = SimpleDateFormat("HH:mm", Locale.KOREA)
     val minutes = ((report.endMillis - report.startMillis) / 60_000).coerceAtLeast(1)
+    BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
+    if (maxWidth < 1300.dp) {
+        // Split with navigation: single scrolling column.
+        Column(
+            Modifier.fillMaxSize().background(AirColors.Panel, RoundedCornerShape(32.dp))
+                .verticalScroll(rememberScrollState()).padding(56.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
+            ReportSummary(report, fmt, minutes)
+            CareLog(report, fmt, onClose)
+        }
+        return@BoxWithConstraints
+    }
     Row(
-        Modifier.fillMaxSize().background(AirColors.Bg).padding(20.dp)
+        Modifier.fillMaxSize().padding(20.dp)
             .background(AirColors.Panel, RoundedCornerShape(32.dp))
             .padding(horizontal = 96.dp, vertical = 72.dp),
         horizontalArrangement = Arrangement.spacedBy(64.dp),
     ) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(28.dp)) {
-            StatusChip("주행 종료 리포트", AirColors.Ok)
-            Text(
-                if (report.smoothnessScore >= 70) "동승자가 멀미 없이 도착했어요" else "오늘은 조금 흔들렸어요",
-                color = AirColors.Text, fontSize = 52.sp, fontWeight = FontWeight.Bold,
-            )
-            Text(
-                "${fmt.format(Date(report.startMillis))} → ${fmt.format(Date(report.endMillis))} · ${minutes}분",
-                color = AirColors.TextMuted, fontSize = 28.sp,
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatCard("부드러움 점수", "${report.smoothnessScore}", Modifier.weight(1f))
-                StatCard("외기 전환", "${report.freshAirSwitches}회", Modifier.weight(1f))
-                StatCard("차가 대신한 케어", "${report.careCount}회", Modifier.weight(1f))
-            }
-            ConditionChart(report)
+            ReportSummary(report, fmt, minutes)
         }
         Column(Modifier.width(500.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("차가 대신한 케어", color = AirColors.Text, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                if (report.events.isEmpty()) {
-                    Text("이번 주행에는 케어가 필요 없었어요", color = AirColors.TextMuted, fontSize = 26.sp, modifier = Modifier.padding(vertical = 18.dp))
-                }
-                report.events.forEach { e ->
-                    CareLogRow(fmt.format(Date(e.timeMillis)), e.detail, careColor(e.type))
-                }
-            }
-            IviButton("닫기", onClose, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
+            CareLog(report, fmt, onClose, Modifier.weight(1f))
         }
     }
+    }
+}
+
+@Composable
+private fun ReportSummary(report: TripReport, fmt: SimpleDateFormat, minutes: Long) {
+    StatusChip("주행 종료 리포트", AirColors.Ok)
+    Text(
+        if (report.smoothnessScore >= 70) "동승자가 멀미 없이 도착했어요" else "오늘은 조금 흔들렸어요",
+        color = AirColors.Text, fontSize = 52.sp, fontWeight = FontWeight.Bold,
+    )
+    Text(
+        "${fmt.format(Date(report.startMillis))} → ${fmt.format(Date(report.endMillis))} · ${minutes}분",
+        color = AirColors.TextMuted, fontSize = 28.sp,
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        StatCard("부드러움 점수", "${report.smoothnessScore}", Modifier.weight(1f))
+        StatCard("외기 전환", "${report.freshAirSwitches}회", Modifier.weight(1f))
+        StatCard("차가 대신한 케어", "${report.careCount}회", Modifier.weight(1f))
+    }
+    ConditionChart(report)
+}
+
+@Composable
+private fun CareLog(report: TripReport, fmt: SimpleDateFormat, onClose: () -> Unit, listModifier: Modifier = Modifier) {
+    Text("차가 대신한 케어", color = AirColors.Text, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+    Column(listModifier) {
+        if (report.events.isEmpty()) {
+            Text("이번 주행에는 케어가 필요 없었어요", color = AirColors.TextMuted, fontSize = 26.sp, modifier = Modifier.padding(vertical = 18.dp))
+        }
+        report.events.forEach { e ->
+            CareLogRow(fmt.format(Date(e.timeMillis)), e.detail, careColor(e.type))
+        }
+    }
+    IviButton("닫기", onClose, filled = true, modifier = Modifier.fillMaxWidth(), minHeight = 100.dp, radius = 32.dp, fontSize = 32)
 }
 
 private fun careColor(t: CareType) = when (t) {

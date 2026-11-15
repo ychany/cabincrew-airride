@@ -4,6 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,18 +39,24 @@ import com.cabincrew.airride.R
 /** Parked wide layout: cabin top view on the left, content on the right (A-01, A-02, A-09). */
 @Composable
 fun ParkedFrame(seat: SeatState, caption: @Composable () -> Unit, content: @Composable () -> Unit) {
-    Row(
-        Modifier.fillMaxSize().background(AirColors.Bg).padding(20.dp)
-            .background(AirColors.Panel, RoundedCornerShape(32.dp))
-            .padding(horizontal = 72.dp, vertical = 72.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(64.dp),
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
-            CabinTopView(seat)
-            caption()
+    BoxWithConstraints(Modifier.fillMaxSize().background(AirColors.Bg)) {
+        val compact = maxWidth < 1300.dp
+        Row(
+            Modifier.fillMaxSize().padding(if (compact) 0.dp else 20.dp)
+                .background(AirColors.Panel, RoundedCornerShape(32.dp))
+                .then(if (compact) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .padding(horizontal = if (compact) 56.dp else 72.dp, vertical = 72.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(64.dp),
+        ) {
+            if (!compact) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
+                    CabinTopView(seat)
+                    caption()
+                }
+            }
+            Box(Modifier.weight(1f)) { content() }
         }
-        Box(Modifier.weight(1f)) { content() }
     }
 }
 
@@ -60,12 +69,20 @@ fun BoardingWhoScreen(onChoose: (Passenger?) -> Unit) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(40.dp)) {
             Heading("뒷좌석 왼쪽에 누가 탔나요?", "함께 탄 사람에 맞춰 케어를 준비할게요.")
-            Row(Modifier.widthIn(max = 1202.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                val tile = Modifier.weight(1f).aspectRatio(1f)
-                SAMPLE_PASSENGERS.forEach { p ->
-                    PassengerTile(if (p.photo == null) "다른 동승자" else p.name, p.photo, tile) { onChoose(p) }
+            val tiles: List<Pair<String, Pair<Int?, () -> Unit>>> =
+                SAMPLE_PASSENGERS.map { p -> (if (p.photo == null) "다른 동승자" else p.name) to (p.photo to { onChoose(p) }) } +
+                    listOf("아무도\n타지 않았어요" to (null to { onChoose(null) }))
+            BoxWithConstraints {
+                val perRow = if (maxWidth < 900.dp) 2 else 4
+                Column(Modifier.widthIn(max = 1202.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+                    tiles.chunked(perRow).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                            row.forEach { (label, v) ->
+                                PassengerTile(label, v.first, Modifier.weight(1f).aspectRatio(1f), v.second)
+                            }
+                        }
+                    }
                 }
-                PassengerTile("아무도\n타지 않았어요", null, tile) { onChoose(null) }
             }
         }
     }
